@@ -95,3 +95,40 @@ test('equal totals share a rank', () => {
   assert.equal(board[0].total, board[1].total);
   assert.equal(board[0].rank, board[1].rank);
 });
+
+// Found by firing 20 simultaneous locks at the live endpoint: 7 of 20 came back as an
+// HTML error page because the server lock queue exceeded its wait. Retrying must be
+// patient enough to outlast the queue, and a non-JSON reply is retryable, not fatal.
+test('submit retries a non-JSON reply and succeeds once the queue clears', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls < 4) return { ok: true, json: async () => { throw new SyntaxError('Unexpected token <'); } };
+    return { ok: true, json: async () => ({ ok: true, duplicate: false }) };
+  };
+  const r = await submit({ sessionCode: 'x', participant: 'p', answers: {}, submissionId: 's' },
+                         { attempts: 6, baseDelayMs: 1 });
+  assert.equal(r.ok, true);
+  assert.equal(calls, 4);
+});
+
+test('submit retries a busy server and reports progress while it waits', async () => {
+  let calls = 0; const seen = [];
+  globalThis.fetch = async () => {
+    calls++;
+    return calls < 3
+      ? { ok: true, json: async () => ({ ok: false, error: 'busy' }) }
+      : { ok: true, json: async () => ({ ok: true }) };
+  };
+  await submit({ sessionCode: 'x', participant: 'p', answers: {}, submissionId: 's' },
+               { attempts: 6, baseDelayMs: 1, onAttempt: (n) => seen.push(n) });
+  assert.deepEqual(seen, [1, 2, 3]);
+});
+
+test('submit gives up only after every attempt', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return { ok: true, json: async () => ({ ok: false, error: 'busy' }) }; };
+  await assert.rejects(() => submit({ sessionCode: 'x', participant: 'p', answers: {}, submissionId: 's' },
+                                    { attempts: 4, baseDelayMs: 1 }));
+  assert.equal(calls, 4);
+});

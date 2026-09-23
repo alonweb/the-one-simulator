@@ -35,9 +35,15 @@ function readState_(code) {
 }
 
 function doPost(e) {
+  // Twenty simultaneous locks queue here. The wait must be inside the try, or a
+  // timeout escapes as an HTML error page instead of JSON the client can act on.
   const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
   try {
+    try {
+      lock.waitLock(120000);
+    } catch (busy) {
+      return json_({ ok: false, error: 'busy', retryable: true });
+    }
     const body = JSON.parse(e.postData.contents);
     if (body.kind === 'state') {
       session_().appendRow([body.sessionCode, body.state, new Date()]);
@@ -61,7 +67,7 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch (e) {}
   }
 }
 

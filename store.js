@@ -20,18 +20,37 @@ async function post(body) {
     body: JSON.stringify(body)
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
+  // a busy server answers with an HTML error page rather than JSON; res.json() throws,
+  // which this treats as retryable rather than fatal
   return res.json();
 }
 
-export async function submit(payload) {
+/**
+ * Sends one submission and keeps trying until it is durably stored.
+ *
+ * Measured against the live endpoint: twenty simultaneous locks queue behind the
+ * server's script lock, seven of twenty came back as an HTML error page, and the
+ * slowest took 22 seconds. Retrying is safe at any length because the submissionId
+ * makes a repeat a no-op on the server, so patience costs nothing and impatience
+ * loses a participant's whole set.
+ */
+export async function submit(payload, opts = {}) {
+  const attempts = opts.attempts ?? 8;
+  const base = opts.baseDelayMs ?? 2000;
+  const onAttempt = opts.onAttempt || (() => {});
   let lastError;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let n = 1; n <= attempts; n++) {
+    onAttempt(n);
     try {
       const r = await post(buildSubmission(payload));
       if (!r || r.ok !== true) throw new Error((r && r.error) || 'rejected by the server');
       return r;
+    } catch (err) {
+      lastError = err;
+      if (n === attempts) break;
+      const wait = Math.min(base * Math.pow(1.6, n - 1), 15000) + Math.random() * 500;
+      await new Promise(r => setTimeout(r, wait));
     }
-    catch (err) { lastError = err; await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); }
   }
   throw lastError;
 }

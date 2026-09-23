@@ -114,7 +114,8 @@ function renderReview() {
     btn.disabled = true; btn.textContent = 'Submitting…';
     try {
       await submit({ sessionCode: state.sessionCode, participant: state.participant,
-                     answers: state.draft, submissionId: state.submissionId });
+                     answers: state.draft, submissionId: state.submissionId },
+                    { onAttempt: (n) => { btn.textContent = n === 1 ? 'Submitting…' : `Still submitting… (try ${n})`; } });
       go('locked');
     } catch (err) {
       document.getElementById('lockErr').textContent =
