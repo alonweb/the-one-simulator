@@ -3,7 +3,7 @@ import { submit, fetchState, fetchRows, normalizeCode } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { summariseMatchup } from './present-format.js';
 import { crowdResult, leaderboard } from './stats.js';
-import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset } from './draft.js';
+import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset, shapeOf, draftMatches, clearMatchup } from './draft.js';
 
 const el = document.getElementById('screen');
 
@@ -15,11 +15,20 @@ if (wantsReset(location.search)) {
 }
 
 const ordinal = (n) => n + (['th','st','nd','rd'][(n%100-n%10!=10)*(n%10<4)*n%10] || 'th');
-const state = loadDraft() || {
-  screen: 'join', sessionCode: '', participant: '',
-  submissionId: 'sub-' + Math.random().toString(36).slice(2) + '-' + Date.now(),
-  index: 0, draft: emptyDraft(MATCHUPS, CATEGORIES)
-};
+function freshState() {
+  return {
+    shape: shapeOf(MATCHUPS, CATEGORIES),
+    screen: 'join', sessionCode: '', participant: '',
+    submissionId: 'sub-' + Math.random().toString(36).slice(2) + '-' + Date.now(),
+    index: 0, draft: emptyDraft(MATCHUPS, CATEGORIES)
+  };
+}
+
+// A draft written against different matchups or categories cannot be resumed against
+// these ones. Silently starting fresh beats leaving the device stuck on a blank screen.
+const saved = loadDraft();
+const state = draftMatches(saved, MATCHUPS, CATEGORIES) ? saved : freshState();
+if (saved && state !== saved) clearDraft();
 
 function go(screen) { state.screen = screen; saveDraft(state); render(); }
 function set(matchupId, key, value) {
@@ -28,6 +37,18 @@ function set(matchupId, key, value) {
 }
 
 function render() {
+  try { return route(); }
+  catch (err) {
+    el.innerHTML = `
+      <p class="eyebrow">Something went wrong</p>
+      <div class="card"><p class="err">${esc(err.message || String(err))}</p>
+      <p class="note">Your answers may still be on this device. Starting again clears them.</p></div>
+      <button id="recover" class="cta">Start again</button>`;
+    document.getElementById('recover').onclick = () => { clearDraft(); location.replace(location.pathname); };
+  }
+}
+
+function route() {
   if (state.screen === 'join') return renderJoin();
   if (state.screen === 'play') return renderPlay();
   if (state.screen === 'review') return renderReview();
@@ -81,7 +102,11 @@ function renderPlay() {
       </div>
     </div>
     ${CATEGORIES.map(c => renderCategory(m, c, entry.categories[c.key])).join('')}
-    <button id="next" class="cta">${state.index + 1 === MATCHUPS.length ? 'Review my answers' : 'Next matchup'}</button>`;
+    <button id="next" class="cta">${state.index + 1 === MATCHUPS.length ? 'Review my answers' : 'Next matchup'}</button>
+    <div class="resets">
+      <button id="clearOne" class="ghost small">Clear this matchup</button>
+      <button id="startOver" class="ghost small">Start from the beginning</button>
+    </div>`;
   wirePlay(m);
 }
 
@@ -129,6 +154,19 @@ function wirePlay(m) {
   document.getElementById('next').onclick = () => {
     if (state.index + 1 === MATCHUPS.length) go('review');
     else { state.index++; go('play'); }
+  };
+  document.getElementById('clearOne').onclick = () => {
+    if (!confirm(`Clear your answers for ${m.a.name} v ${m.b.name}? The other matchups are not touched.`)) return;
+    state.draft = clearMatchup(state.draft, m.id);
+    saveDraft(state); render();
+  };
+  document.getElementById('startOver').onclick = () => {
+    if (!confirm('Clear every answer and go back to the start? This cannot be undone.')) return;
+    // the submissionId is kept on purpose: the server rejects a repeat of it, so starting
+    // over can never put a second entry for this device into the sheet
+    state.draft = emptyDraft(MATCHUPS, CATEGORIES);
+    state.index = 0;
+    go('join');
   };
 }
 

@@ -44,3 +44,20 @@ export function wantsReset(search) {
   const v = new URLSearchParams(search || '').get('reset');
   return v !== null && v !== '0' && v !== 'false' && v !== '';
 }
+
+/** The matchups and categories a draft was written against. */
+export function shapeOf(matchups, categories) {
+  return matchups.map(m => m.id).join(',') + '|' + categories.map(c => c.key).join(',');
+}
+
+/** True only if a saved draft was written against the configuration now in force. */
+export function draftMatches(saved, matchups, categories) {
+  return !!saved && saved.shape === shapeOf(matchups, categories);
+}
+
+/** Empties one matchup's answers, leaving every other matchup untouched. */
+export function clearMatchup(draft, matchupId) {
+  const next = JSON.parse(JSON.stringify(draft));
+  next[matchupId] = { overall: null, categories: {} };
+  return next;
+}

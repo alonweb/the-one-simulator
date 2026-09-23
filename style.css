@@ -154,3 +154,8 @@ ol.board li.me { border-color: var(--coral); border-width: 2px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* the two reset controls sit below the primary action, quiet on purpose */
+.resets { display: flex; gap: 10px; margin-top: 14px; }
+.resets button { flex: 1; }
+button.small { min-height: 42px; font-size: 14px; padding: 8px 10px; }

@@ -188,3 +188,52 @@ test('a reset is requested only by the explicit query flag', () => {
   assert.equal(wantsReset('?code=ABC'), false);
   assert.equal(wantsReset('?reset=0'), false);
 });
+
+// A saved draft from an earlier configuration must not brick the device. Alon hit this:
+// his phone held a draft written before the category keys changed, and the page stopped
+// at "Loading…" with no way out but a hidden query flag.
+import { draftMatches } from './draft.js';
+
+test('a draft written against the same shape is kept', () => {
+  const M = [{ id:'m1' }, { id:'m2' }], C = [{ key:'smile' }, { key:'style' }];
+  const saved = { shape: 'm1,m2|smile,style', draft: {} };
+  assert.equal(draftMatches(saved, M, C), true);
+});
+
+test('a draft written against different categories is discarded', () => {
+  const M = [{ id:'m1' }], C = [{ key:'confidence' }];
+  assert.equal(draftMatches({ shape: 'm1|photo_a' }, M, C), false);
+});
+
+test('a draft written against different matchups is discarded', () => {
+  const M = [{ id:'m1' }, { id:'m2' }], C = [{ key:'smile' }];
+  assert.equal(draftMatches({ shape: 'm1|smile' }, M, C), false);
+});
+
+test('a draft with no shape at all is discarded', () => {
+  assert.equal(draftMatches({}, [{ id:'m1' }], [{ key:'smile' }]), false);
+  assert.equal(draftMatches(null, [{ id:'m1' }], [{ key:'smile' }]), false);
+});
+
+// Clearing one matchup is safe at any time. Clearing everything keeps the submissionId,
+// so a participant who starts over still cannot reach the sheet twice.
+import { clearMatchup } from './draft.js';
+
+test('clearing a matchup empties only that matchup', () => {
+  const M = [{ id:'m1' }, { id:'m2' }], C = [{ key:'smile' }];
+  let d = emptyDraft(M, C);
+  d = setAnswer(d, 'm1', 'overall', { vote:'a', predicted:'b' });
+  d = setAnswer(d, 'm1', 'smile', { vote:'a', contestant:'b', share:70 });
+  d = setAnswer(d, 'm2', 'overall', { vote:'a', predicted:'b' });
+  const out = clearMatchup(d, 'm1');
+  assert.equal(out.m1.overall, null);
+  assert.deepEqual(out.m1.categories, {});
+  assert.deepEqual(out.m2.overall, { vote:'a', predicted:'b' });
+});
+
+test('clearing a matchup does not mutate the draft it was given', () => {
+  const M = [{ id:'m1' }], C = [{ key:'smile' }];
+  let d = setAnswer(emptyDraft(M, C), 'm1', 'overall', { vote:'a', predicted:'b' });
+  clearMatchup(d, 'm1');
+  assert.deepEqual(d.m1.overall, { vote:'a', predicted:'b' });
+});
