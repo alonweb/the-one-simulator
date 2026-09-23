@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE ONE — presenter</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; line-height: 1.5; }
+  button { font-size: 16px; padding: 10px 14px; margin-right: 8px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { border-bottom: 1px solid #ccc; text-align: left; padding: 6px 8px; }
+  .warn { color: #a00; }
+</style>
+</head>
+<body>
+  <h1>Presenter</h1>
+  <p><input id="code" placeholder="Session code"> <button id="load">Load</button></p>
+  <p><button id="close">Close the round</button> <button id="reveal">Reveal results</button>
+     <button id="export">Export raw answers</button></p>
+  <div id="out">Enter the session code and press Load.</div>
+  <script type="module" src="presenter.js"></script>
+</body>
+</html>
