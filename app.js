@@ -65,6 +65,7 @@ function render() {
 }
 
 function route() {
+  if (state.screen !== 'join') document.body.classList.remove('splash-on');
   if (state.screen === 'join') return renderJoin();
   if (state.screen === 'play') return renderPlay();
   if (state.screen === 'review') return renderReview();
@@ -73,19 +74,19 @@ function route() {
 }
 
 function renderJoin() {
+  document.body.classList.add('splash-on');
   el.innerHTML = `
-    <svg class="crown" viewBox="0 0 64 42" aria-hidden="true" fill="none"><path d="M6 36 L4 10 L18 22 L32 4 L46 22 L60 10 L58 36 Z" fill="#F2B134" stroke="#E09A1E" stroke-width="2.5" stroke-linejoin="round"/></svg>
-    <p class="mark"><span class="the">THE</span><span class="one">ONE</span></p>
-    <p class="tagline">Pick. Predict. Compete.</p>
-    <div class="q">
+    <div class="splash" role="img" aria-label="THE ONE"></div>
+    <p class="splash-tagline">Who will be the one?</p>
+    <div class="join">
       <label for="code">Session code</label>
       <input id="code" placeholder="The presenter will say it">
-      <p class="ask" style="margin-top:16px"><label for="name">Your name</label></p>
-      <input id="name" placeholder="How you want to appear on the board">
-      <button id="start" class="cta">Start</button>
+      <label for="name" style="margin-top:14px">Your name</label>
+      <input id="name" placeholder="How you appear on the board">
+      <button id="start" class="cta start">Start <span aria-hidden="true">&rarr;</span></button>
       <p class="err" id="joinErr"></p>
     </div>
-    <p class="note">Five matchups. On each one you make two calls: who <strong>you</strong> prefer, and who you think <strong>everyone else</strong> will choose. Points come from reading the room, not from your own taste.</p>`;
+    <p class="note splash-note">Five matchups. On each one you make two calls: who <strong>you</strong> prefer, and who you think <strong>everyone else</strong> will choose. Points come from reading the room, not from your own taste.</p>`;
   document.getElementById('start').onclick = () => {
     const code = document.getElementById('code').value.trim();
     const name = document.getElementById('name').value.trim();

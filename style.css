@@ -159,3 +159,24 @@ button.jump:hover { background: var(--pink-dark); }
 button.small { min-height: 40px; font-size: 13px; padding: 6px 10px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* The opening screen is the deck's own cover artwork, cropped above its baked-in
+   button so the real form can sit underneath it. */
+body.splash-on { padding: 0 0 32px; background: var(--white); }
+.splash {
+  width: 100%; height: 46vh; min-height: 260px; max-height: 420px;
+  background-image: url('photos/splash.jpg');
+  background-size: cover; background-position: center 55%;
+}
+.splash-tagline {
+  text-align: center; text-transform: uppercase; letter-spacing: .17em;
+  font-size: 13px; font-weight: 800; color: #14505E; margin: 18px 16px 4px;
+}
+.join { padding: 12px 20px 0; }
+.join label { font-size: 13px; font-weight: 800; }
+.start {
+  background: var(--pink); color: var(--white); border-radius: 999px;
+  font-size: 19px; font-weight: 600; letter-spacing: .04em; min-height: 58px; margin-top: 20px;
+}
+.start:hover { background: var(--pink-dark); }
+.splash-note { padding: 0 20px; }
