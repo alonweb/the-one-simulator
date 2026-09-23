@@ -55,8 +55,27 @@ export async function submit(payload, opts = {}) {
   throw lastError;
 }
 
-export async function setState(sessionCode, state) {
-  return post({ kind: 'state', sessionCode, state });
+/** The only two states a presenter sets. A round starts open; nobody sets it back. */
+export const PRESENTER_STATES = ['closed', 'revealed'];
+
+/**
+ * A state write, checked before it leaves the page.
+ *
+ * Closing a round and revealing the results are the two irreversible acts in a session,
+ * and the endpoint is in every participant's browser. The key is what separates the
+ * presenter from everyone holding the same link. It lives in the server's Script
+ * Properties and on the presenter's own device, never in this repository.
+ */
+export function buildStateWrite(sessionCode, state, key) {
+  const code = normalizeCode(sessionCode);
+  if (!code) throw new Error('A session code is needed.');
+  if (!PRESENTER_STATES.includes(state)) throw new Error('The state must be closed or revealed.');
+  if (!String(key == null ? '' : key).trim()) throw new Error('The presenter key is needed.');
+  return { kind: 'state', sessionCode: code, state, key: String(key).trim() };
+}
+
+export async function setState(sessionCode, state, key) {
+  return post(buildStateWrite(sessionCode, state, key));
 }
 
 export async function fetchState(sessionCode) {

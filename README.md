@@ -22,17 +22,35 @@ Spec and plan live in the HumanPatterns project under
 
 ## Before the session
 
-1. **Set the four categories and ten contestants** in `config.js`. Two category labels
-   read `TO BE NAMED`; the presenter console warns while they still do.
-   Put the photographs in `photos/`.
-2. **Deploy the server.** Paste `apps-script.gs` into the Apps Script editor bound to the
+1. **Set the four categories and ten contestants** in `config.js`, and put the
+   photographs in `photos/`. The categories shipped here are the pilot mockup's:
+   best smile, style, best body, take to Mama.
+2. **Set the presenter key.** In the Apps Script editor: **Project Settings → Script
+   properties → Add script property**, name `PRESENTER_KEY`, value whatever the
+   presenter will type. It is not in this repository, because this repository is public.
+   Until it is set the server refuses to close a round or reveal results at all — which
+   is the intended failure, not a fault.
+3. **Deploy the server.** Paste `apps-script.gs` into the Apps Script editor bound to the
    session spreadsheet, then **Deploy → Manage deployments → edit → Version: New version → Deploy**.
    Saving without a new version leaves the old code serving. This catches everyone.
-3. **Verify it** with the commands in `apps-script.test.md`.
-4. **Rehearse.** `ENDPOINT="…/exec" CODE=REHEARSAL node rehearse.mjs`, then open the
+4. **Verify it** with the commands in `apps-script.test.md`.
+5. **Rehearse.** `ENDPOINT="…/exec" CODE=REHEARSAL node rehearse.mjs`, then open the
    presenter console against `REHEARSAL` and check the leaderboard adds up.
    Delete the `REHEARSAL` rows from the sheet afterwards.
-5. **Run the tests.** `node --test` from this directory.
+6. **Run the tests.** `node --test` from this directory.
+
+## What the key protects, and what it does not
+
+The endpoint URL is in `config.js`, so it reaches every participant's browser. That is
+unavoidable: the page has to write to it. What the presenter key adds is that only the
+presenter can **close a round** or **reveal the results** — the two acts in a session that
+cannot be undone. A read still needs only the session code, which everyone in the room has,
+and that is by design: participants compute their own results from the same rows.
+
+Nothing here is real security. A session code keeps out a stranger who stumbles on the link;
+the presenter key keeps a participant from ending the round early. Neither would stop someone
+determined, and the data is a focus group's opinions about photographs, not anything that
+needs to.
 
 ## On the day
 

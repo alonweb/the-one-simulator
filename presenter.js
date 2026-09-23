@@ -6,9 +6,16 @@ import { crowdResult, sessionStats, contestantStanding } from './stats.js';
 
 const out = document.getElementById('out');
 const codeInput = document.getElementById('code');
+const keyInput = document.getElementById('key');
 let rows = [];
 
 function code() { return normalizeCode(codeInput.value); }
+
+// The key stays on the presenter's own device. It is remembered so a mid-session
+// refresh does not lose it, and it is never sent anywhere but the state write.
+const KEY_STORE = 'theone.presenterKey';
+try { keyInput.value = localStorage.getItem(KEY_STORE) || ''; } catch (e) {}
+keyInput.oninput = () => { try { localStorage.setItem(KEY_STORE, keyInput.value); } catch (e) {} };
 
 export function buildCrowd(rows) {
   const keys = CATEGORIES.map(c => c.key);
@@ -83,8 +90,19 @@ async function refresh() {
 document.getElementById('load').onclick = refresh;
 async function change(to) {
   if (!code()) { out.textContent = 'Enter the session code first.'; return; }
-  try { await setState(code(), to); } 
-  catch (err) { out.innerHTML = `<p class="warn">Could not set the round to ${to}: ${esc(err.message)}. Try again.</p>`; return; }
+  if (!keyInput.value.trim()) {
+    out.innerHTML = '<p class="warn">The presenter key is needed to do that.</p>'; return;
+  }
+  if (!confirm(to === 'revealed'
+      ? 'Reveal the results to everyone now? Every phone changes screen within ten seconds.'
+      : 'Close the round now? Nobody who has not locked will be able to.')) return;
+  try {
+    const r = await setState(code(), to, keyInput.value);
+    if (!r || r.ok !== true) throw new Error((r && r.error) || 'the server refused it');
+  } catch (err) {
+    out.innerHTML = `<p class="warn">Could not set the round to ${to}: ${esc(err.message)}.</p>`;
+    return;
+  }
   refresh();
 }
 document.getElementById('close').onclick = () => change('closed');

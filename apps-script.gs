@@ -3,6 +3,12 @@
  * Paste this whole file into the Apps Script editor bound to the session spreadsheet,
  * then Deploy -> Manage deployments -> edit -> Version: New version -> Deploy.
  * Saving without a NEW VERSION leaves the old code serving.
+ *
+ * BEFORE DEPLOYING, set the presenter key:
+ *   Project Settings -> Script properties -> Add script property
+ *   Property: PRESENTER_KEY    Value: whatever the presenter will type
+ * It is deliberately not in this file, because this file is published. Until it is set,
+ * the server refuses to close a round or reveal results at all.
  */
 const RESPONSES = 'responses';
 const SESSION = 'session';
@@ -34,6 +40,11 @@ function readState_(code) {
   return 'open';
 }
 
+/** The secret that separates the presenter from everyone holding the same link. */
+function presenterKey_() {
+  return String(PropertiesService.getScriptProperties().getProperty('PRESENTER_KEY') || '').trim();
+}
+
 function doPost(e) {
   // Twenty simultaneous locks queue here. The wait must be inside the try, or a
   // timeout escapes as an HTML error page instead of JSON the client can act on.
@@ -45,7 +56,24 @@ function doPost(e) {
       return json_({ ok: false, error: 'busy', retryable: true });
     }
     const body = JSON.parse(e.postData.contents);
+    // Closing a round and revealing the results are the two irreversible acts in a
+    // session, and the endpoint URL is in every participant's browser. Fail closed:
+    // with no key configured, nobody can do either, including the presenter.
     if (body.kind === 'state') {
+      var expected = presenterKey_();
+      if (!expected) {
+        return json_({ ok: false, error: 'No presenter key is set on the server. ' +
+          'Project Settings -> Script properties -> PRESENTER_KEY.' });
+      }
+      if (String(body.key == null ? '' : body.key).trim() !== expected) {
+        return json_({ ok: false, error: 'wrong presenter key' });
+      }
+      if (String(body.state) !== 'closed' && String(body.state) !== 'revealed') {
+        return json_({ ok: false, error: 'the state must be closed or revealed' });
+      }
+      if (!String(body.sessionCode || '').trim()) {
+        return json_({ ok: false, error: 'a session code is needed' });
+      }
       session_().appendRow([body.sessionCode, body.state, new Date()]);
       return json_({ ok: true, state: body.state });
     }
@@ -74,9 +102,12 @@ function doPost(e) {
 function doGet(e) {
   const code = (e && e.parameter && e.parameter.code) || '';
   const what = (e && e.parameter && e.parameter.what) || 'rows';
+  // A read without a session code used to return every row of every session. One is
+  // always available to anyone entitled to read, so requiring it costs nothing.
+  if (!String(code).trim()) return json_({ ok: false, error: 'a session code is needed' });
   if (what === 'state') return json_({ ok: true, state: readState_(code) });
   const rows = responses_().getDataRange().getValues().slice(1)
-    .filter(r => !code || String(r[1]) === String(code))
+    .filter(r => String(r[1]) === String(code))
     .map(r => ({ receivedAt: r[0], submissionId: r[2], participant: r[3], answers: JSON.parse(r[4] || 'null') }));
   return json_({ ok: true, rows: rows });
 }

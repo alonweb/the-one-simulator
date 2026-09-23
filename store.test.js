@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSubmission, parseRows } from './store.js';
+import { buildSubmission, parseRows, buildStateWrite } from './store.js';
 
 test('a submission carries the session code and a stable id', () => {
   const s = buildSubmission({ sessionCode: 'X1', participant: 'Ana', answers: { m1: {} }, submissionId: 'fixed-id' });
@@ -22,4 +22,27 @@ test('parseRows drops rows whose payload did not parse', () => {
 test('parseRows tolerates a failed response', () => {
   assert.deepEqual(parseRows({ ok: false }), []);
   assert.deepEqual(parseRows(null), []);
+});
+
+// The presenter key. It is never in the repository: the server keeps it in Script
+// Properties and the presenter types it once on their own device.
+test('a state write carries the session code, the state and the presenter key', () => {
+  const w = buildStateWrite(' x1 ', 'revealed', 'hunter2');
+  assert.deepEqual(w, { kind: 'state', sessionCode: 'X1', state: 'revealed', key: 'hunter2' });
+});
+
+test('a state write without a key is refused before it reaches the network', () => {
+  assert.throws(() => buildStateWrite('X1', 'revealed', ''), /presenter key/i);
+  assert.throws(() => buildStateWrite('X1', 'revealed', '   '), /presenter key/i);
+  assert.throws(() => buildStateWrite('X1', 'revealed'), /presenter key/i);
+});
+
+test('a state write without a session code is refused', () => {
+  assert.throws(() => buildStateWrite('', 'revealed', 'hunter2'), /session code/i);
+});
+
+test('only the two states the presenter can set are accepted', () => {
+  assert.equal(buildStateWrite('X1', 'closed', 'k').state, 'closed');
+  assert.throws(() => buildStateWrite('X1', 'open', 'k'), /closed or revealed/i);
+  assert.throws(() => buildStateWrite('X1', 'nonsense', 'k'), /closed or revealed/i);
 });
