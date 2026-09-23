@@ -1,6 +1,7 @@
 import { MATCHUPS, CATEGORIES } from './config.js';
 import { fetchRows, fetchState, setState, normalizeCode } from './store.js';
 import { escapeHtml as esc } from './html.js';
+import { formatCounts } from './present-format.js';
 import { crowdResult, sessionStats } from './stats.js';
 
 const out = document.getElementById('out');
@@ -27,15 +28,26 @@ async function refresh() {
   const crowd = buildCrowd(rows);
   const stats = sessionStats(rows, crowd);
   const state = await fetchState(code()).catch(() => 'unknown');
-  const unnamed = CATEGORIES.filter(c => c.label.startsWith('TO BE NAMED'));
+  const pending = CATEGORIES.filter(c => c.needsReplacement);
+  const warning = pending.length
+    ? `<p class="warn">${pending.map(c => c.label).join(' and ')} still need replacing in config.js — they are judged from video, and there is none for this session.</p>` : '';
+  const header = `<p>Round is <strong>${state}</strong>. Locked in: <strong>${rows.length}</strong>${
+    rows.length ? '' : ' — nobody has locked yet'}.</p>`;
+
+  // Before anyone locks there is nothing to report, and a page of zeros reads as a fault.
+  if (!rows.length) {
+    out.innerHTML = `${warning}${header}
+      <p>This updates itself every 15 seconds. Numbers appear as people lock.</p>`;
+    return;
+  }
+
   out.innerHTML = `
-    ${unnamed.length ? `<p class="warn">${unnamed.length} category label(s) still unnamed in config.js.</p>` : ''}
-    <p>State: <strong>${state}</strong>. Locked in: <strong>${rows.length}</strong>.</p>
+    ${warning}${header}
     <p>Exact category hits: ${(stats.exactRate * 100).toFixed(1)}%.
        Average error predicting the room: ${stats.meanAbsoluteError.toFixed(1)} points.
        ${stats.ties.length ? 'Tied matchups: ' + stats.ties.join(', ') : 'No ties.'}</p>
     <p>Hardest to predict: ${stats.categoryDifficulty.length
-      ? stats.categoryDifficulty.map(d => `${(CATEGORIES.find(c => c.key === d.key) || {}).label || d.key} (${d.meanAbsoluteError.toFixed(1)})`).join(', ')
+      ? stats.categoryDifficulty.map(d => `${(CATEGORIES.find(c => c.key === d.key) || {}).label || d.key} (average error ${d.meanAbsoluteError.toFixed(1)})`).join(', ')
       : 'no data yet'}.</p>
     <h2>Leaderboard</h2>
     <table><tr><th>#</th><th>Name</th><th>Points</th></tr>
@@ -45,8 +57,13 @@ async function refresh() {
     ${MATCHUPS.map(m => {
       const c = crowd[m.id];
       return `<h3>${m.a.name} v ${m.b.name}</h3>
-        <p>Who is the one: ${JSON.stringify(c.overallCounts)} ${c.overallTied ? '(tied, scores zero)' : ''}</p>
-        <p>${CATEGORIES.map(cat => `${cat.label}: ${JSON.stringify(c.categories[cat.key])}`).join('<br>')}</p>`;
+        <table>
+          <tr><th>Question</th><th>How the room voted</th></tr>
+          <tr><td>Who is the one</td><td>${formatCounts(c.overallCounts, m)}${
+            c.overallTied ? ' <strong>— tied, so this question scores zero for everyone</strong>' : ''}</td></tr>
+          ${CATEGORIES.map(cat =>
+            `<tr><td>${cat.label}</td><td>${formatCounts(c.categories[cat.key], m)}</td></tr>`).join('')}
+        </table>`;
     }).join('')}`;
   } catch (err) {
     out.innerHTML = `<p class="warn">Could not reach the sheet: ${esc(err.message)}. Nothing was changed. Press Load to try again.</p>`;

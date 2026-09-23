@@ -2,13 +2,15 @@
 export const ENDPOINT =
   'https://script.google.com/macros/s/AKfycbzuWOwMRpYABdBa3q3MYHlR_jQaiXm5j7EQ3VJOjy3-SDDD6ckSH7sBAUo0Xg0RFNP_/exec';
 
-// Confidence and Sense of Humour need video, which does not exist for this session,
-// so two photo-judgeable categories replace them. Mati and Avishai name them.
+// The specification's four categories. Confidence and Sense of Humour are judged from
+// video in the real product, and there is no video for this session, so they carry
+// `needsReplacement` until Mati and Avishai supply two photo-judgeable categories.
+// The presenter console shows a warning while any remain.
 export const CATEGORIES = [
-  { key: 'smile',   label: 'Best Smile' },
-  { key: 'style',   label: 'Style' },
-  { key: 'photo_a', label: 'TO BE NAMED — photo-judgeable category A' },
-  { key: 'photo_b', label: 'TO BE NAMED — photo-judgeable category B' }
+  { key: 'smile',      label: 'Best Smile' },
+  { key: 'style',      label: 'Style' },
+  { key: 'confidence', label: 'Confidence',       needsReplacement: true },
+  { key: 'humour',     label: 'Sense of Humour',  needsReplacement: true }
 ];
 
 // Ten contestants in five matchups. Replace names and photo paths when Avishai delivers.

@@ -132,3 +132,22 @@ test('submit gives up only after every attempt', async () => {
                                     { attempts: 4, baseDelayMs: 1 }));
   assert.equal(calls, 4);
 });
+
+// The presenter drives this live in front of people. An empty session must say so,
+// and vote counts must be readable rather than raw JSON.
+import { formatCounts } from './present-format.js';
+
+test('counts read as names, votes and a share', () => {
+  const m = { a: { id: 'c1', name: 'Ana' }, b: { id: 'c2', name: 'Bea' } };
+  assert.equal(formatCounts({ c1: 7, c2: 13 }, m), 'Bea 13 (65%), Ana 7 (35%)');
+});
+
+test('a unanimous count still names the shut-out contestant', () => {
+  const m = { a: { id: 'c1', name: 'Ana' }, b: { id: 'c2', name: 'Bea' } };
+  assert.equal(formatCounts({ c1: 4, c2: 0 }, m), 'Ana 4 (100%), Bea 0 (0%)');
+});
+
+test('no votes yet reads as no votes, not as a row of zeros', () => {
+  const m = { a: { id: 'c1', name: 'Ana' }, b: { id: 'c2', name: 'Bea' } };
+  assert.equal(formatCounts({ c1: 0, c2: 0 }, m), 'no votes yet');
+});
