@@ -9,7 +9,7 @@ export const DEFAULT_SHARE = 51;
 export function setAnswer(draft, matchupId, key, value) {
   const next = JSON.parse(JSON.stringify(draft));
   if (key === 'overall') next[matchupId].overall = value;
-  else next[matchupId].categories[key] = { share: DEFAULT_SHARE, ...value };
+  else next[matchupId].categories[key] = value;
   return next;
 }
 
@@ -60,4 +60,23 @@ export function clearMatchup(draft, matchupId) {
   const next = JSON.parse(JSON.stringify(draft));
   next[matchupId] = { overall: null, categories: {} };
   return next;
+}
+
+/**
+ * One slider, both sides. The value is the LEFT contestant's predicted share, so
+ * sliding past half predicts the left contestant and below half predicts the right.
+ * Exactly half predicts nobody, which is the same reason the specification floors a
+ * category prediction at 51.
+ */
+export function splitFromSlider(value, leftId, rightId) {
+  if (value === 50) return null;
+  return value > 50
+    ? { contestant: leftId, share: value }
+    : { contestant: rightId, share: 100 - value };
+}
+
+/** The slider position that represents a stored prediction. */
+export function sliderFromSplit(answer, leftId) {
+  if (!answer || !answer.contestant || typeof answer.share !== 'number') return 50;
+  return answer.contestant === leftId ? answer.share : 100 - answer.share;
 }

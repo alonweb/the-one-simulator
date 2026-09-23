@@ -68,12 +68,21 @@ test('escapeHtml neutralises markup in a name', () => {
   assert.equal(escapeHtml('Ana & "Bo"'), 'Ana &amp; &quot;Bo&quot;');
 });
 
-// C3 — choosing a contestant must record the displayed default share
-test('choosing a category contestant records the default share', () => {
+// Replaced C3: the deck's single slider carries the prediction, so a category is
+// answered only once the slider has left dead centre AND a pick has been made.
+test('a category with a pick but an untouched slider is not complete', () => {
   let d = emptyDraft(MATCHES, CATS);
   d = setAnswer(d, 'm1', 'overall', { vote: 'c1', predicted: 'c1' });
-  d = setAnswer(d, 'm1', 'smile', { vote: 'c1', contestant: 'c1' });
-  assert.equal(d.m1.categories.smile.share, 51);
+  d = setAnswer(d, 'm1', 'smile', { vote: 'c1' });
+  assert.equal(isComplete(d, MATCHES, CATS), false);
+});
+
+test('a category is complete once the slider names a side and a share', () => {
+  let d = emptyDraft(MATCHES, CATS);
+  d = setAnswer(d, 'm1', 'overall', { vote: 'c1', predicted: 'c1' });
+  d = setAnswer(d, 'm1', 'smile', { vote: 'c1', ...splitFromSlider(70, 'c1', 'c2') });
+  assert.equal(d.m1.categories.smile.contestant, 'c1');
+  assert.equal(d.m1.categories.smile.share, 70);
   assert.equal(isComplete(d, MATCHES, CATS), true);
 });
 
@@ -292,4 +301,32 @@ test('contestants are ranked by the crowd, strongest first', () => {
   const out = contestantStanding(rows, M, []);
   assert.equal(out[0].wonOverall, true);
   assert.equal(out[out.length - 1].wonOverall, false);
+});
+
+// The deck's own screens use ONE slider showing both sides (70% / 30%) instead of
+// tapping a contestant and then setting a number. Whichever side is above half is the
+// contestant being predicted, which is also why the spec floors the input at 51.
+import { splitFromSlider, sliderFromSplit } from './draft.js';
+
+test('sliding past half predicts the left contestant', () => {
+  assert.deepEqual(splitFromSlider(70, 'L', 'R'), { contestant: 'L', share: 70 });
+});
+
+test('sliding below half predicts the right contestant', () => {
+  assert.deepEqual(splitFromSlider(30, 'L', 'R'), { contestant: 'R', share: 70 });
+});
+
+test('dead half predicts nobody, which is why 51 is the floor', () => {
+  assert.equal(splitFromSlider(50, 'L', 'R'), null);
+});
+
+test('the extremes are a unanimous call for one side', () => {
+  assert.deepEqual(splitFromSlider(100, 'L', 'R'), { contestant: 'L', share: 100 });
+  assert.deepEqual(splitFromSlider(0, 'L', 'R'), { contestant: 'R', share: 100 });
+});
+
+test('a stored answer maps back to its slider position', () => {
+  assert.equal(sliderFromSplit({ contestant: 'L', share: 70 }, 'L'), 70);
+  assert.equal(sliderFromSplit({ contestant: 'R', share: 70 }, 'L'), 30);
+  assert.equal(sliderFromSplit(null, 'L'), 50);
 });

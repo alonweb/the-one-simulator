@@ -3,7 +3,7 @@ import { submit, fetchState, fetchRows, normalizeCode } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { summariseMatchup } from './present-format.js';
 import { crowdResult, leaderboard, contestantStanding } from './stats.js';
-import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset, shapeOf, draftMatches, clearMatchup } from './draft.js';
+import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset, shapeOf, draftMatches, clearMatchup, splitFromSlider, sliderFromSplit } from './draft.js';
 
 const el = document.getElementById('screen');
 
@@ -59,7 +59,7 @@ function route() {
 function renderJoin() {
   el.innerHTML = `
     <svg class="crown" viewBox="0 0 64 42" aria-hidden="true" fill="none"><path d="M6 36 L4 10 L18 22 L32 4 L46 22 L60 10 L58 36 Z" fill="#F2B134" stroke="#E09A1E" stroke-width="2.5" stroke-linejoin="round"/></svg>
-    <p class="wordmark">THE ONE</p>
+    <p class="mark"><span class="the">THE</span><span class="one">ONE</span></p>
     <p class="tagline">Pick. Predict. Compete.</p>
     <div class="q">
       <label for="code">Session code</label>
@@ -87,8 +87,11 @@ function renderPlay() {
   el.innerHTML = `
     <p class="eyebrow">Matchup ${state.index + 1} of ${MATCHUPS.length}</p>
     <div class="pair">
-      <div><img src="${m.a.photo}" alt="${m.a.name}"><p>${m.a.name}</p></div>
-      <div><img src="${m.b.photo}" alt="${m.b.name}"><p>${m.b.name}</p></div>
+      <div class="${entry.overall?.vote === m.a.id ? 'picked' : ''}">
+        <img src="${m.a.photo}" alt="${m.a.name}"><p>${m.a.name}</p></div>
+      <div class="vs">VS</div>
+      <div class="${entry.overall?.vote === m.b.id ? 'picked' : ''}">
+        <img src="${m.b.photo}" alt="${m.b.name}"><p>${m.b.name}</p></div>
     </div>
     <div class="q" id="q-overall">
       <h3>Who is the one?</h3>
@@ -122,10 +125,9 @@ function renderPlay() {
 }
 
 function renderCategory(m, c, a) {
-  const onPred = (who) => `aria-pressed="${a && a.contestant === who ? 'true' : 'false'}"`;
   const onVote = (who) => `aria-pressed="${a && a.vote === who ? 'true' : 'false'}"`;
-  const share = a && typeof a.share === 'number' ? a.share : 51;
-  const who = a && a.contestant ? (a.contestant === m.a.id ? m.a.name : m.b.name) : 'them';
+  const pos = sliderFromSplit(a, m.a.id);
+  const split = splitFromSlider(pos, m.a.id, m.b.id);
   return `
     <div class="q" id="q-${c.key}">
       <h3>${c.label}</h3>
@@ -135,15 +137,16 @@ function renderCategory(m, c, a) {
         <button data-q="${c.key}" data-f="vote" data-v="${m.a.id}" ${onVote(m.a.id)}>${m.a.name}</button>
         <button data-q="${c.key}" data-f="vote" data-v="${m.b.id}" ${onVote(m.b.id)}>${m.b.name}</button>
       </div>
-      <p class="ask">Crowd prediction — who, and by how much?</p>
-      <div class="choices">
-        <button data-q="${c.key}" data-f="contestant" data-v="${m.a.id}" ${onPred(m.a.id)}>${m.a.name}</button>
-        <button data-q="${c.key}" data-f="contestant" data-v="${m.b.id}" ${onPred(m.b.id)}>${m.b.name}</button>
-      </div>
+      <p class="ask">Predict the crowd</p>
       <div class="slider">
-        <input type="range" min="51" max="100" value="${share}" data-q="${c.key}" data-f="share"
-               aria-label="${c.label}: share of the room">
-        <p class="share">${share}%<small>of the room pick ${who}</small></p>
+        <input type="range" min="0" max="100" value="${pos}" data-q="${c.key}" data-f="split"
+               aria-label="${c.label}: how the room splits between ${m.a.name} and ${m.b.name}">
+        ${split
+          ? `<div class="split">
+               <span class="${split.contestant === m.a.id ? 'lead' : 'trail'}">${pos}%<small>${m.a.name}</small></span>
+               <span class="${split.contestant === m.b.id ? 'lead' : 'trail'}">${100 - pos}%<small>${m.b.name}</small></span>
+             </div>`
+          : `<div class="split none">Slide toward whoever you think the room picks</div>`}
       </div>
     </div>`;
 }
@@ -160,7 +163,8 @@ function wirePlay(m, gaps) {
     r.oninput = () => {
       const q = r.dataset.q;
       const cur = state.draft[m.id].categories[q] || {};
-      set(m.id, q, { ...cur, share: Number(r.value) });
+      const split = splitFromSlider(Number(r.value), m.a.id, m.b.id);
+      set(m.id, q, split ? { ...cur, ...split } : { vote: cur.vote });
     };
   });
   document.getElementById('next').onclick = () => {

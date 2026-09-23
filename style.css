@@ -1,187 +1,161 @@
-/* THE ONE — warm Colombian poster. Palette sampled from the reference artwork:
-   coral from the START button, amber and gold from the wordmark and crown,
-   teal from the cool half of the wordmark, cream from the sky wash. */
+/* THE ONE — the deck's identity, sampled from its own pages:
+   hot pink #FB2F54 (32% of the cover), pure yellow #FFFF00, white, near-black.
+   The app surface is white with pink as the chosen state, exactly as the phone
+   mockups on pages 3, 4 and 7 show it. */
 :root {
-  --cream:      #FDFBF3;
-  --cream-2:    #F6F0E2;
-  --coral:      #E95F5E;
-  --coral-dark: #C94746;
-  --amber:      #F2A03D;
-  --gold:       #F2B134;
-  --teal:       #1D6F7E;
-  --teal-dark:  #12525E;
-  --ink:        #123A43;
-  --muted:      #62777D;
-  --line:       #E2DACA;
-  --white:      #FFFFFF;
-  --r:          14px;
-  --shadow:     0 2px 0 rgba(18,58,67,.10);
+  --pink:      #FB2F54;
+  --pink-dark: #D81F42;
+  --pink-tint: #FFE8ED;
+  --yellow:    #FFFF00;
+  --ink:       #0E0E0E;
+  --grey:      #F2F2F4;
+  --grey-2:    #E4E4E8;
+  --muted:     #6E6E76;
+  --white:     #FFFFFF;
+  --r:         16px;
+  --shadow:    0 2px 8px rgba(14,14,14,.07);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
-  margin: 0;
-  padding: 20px 16px 40px;
-  max-width: 560px;
-  font-family: Nunito, system-ui, sans-serif;
-  font-size: 17px;
-  line-height: 1.55;
-  color: var(--ink);
-  background: var(--cream);
+  margin: 0; padding: 16px 16px 40px; max-width: 560px;
+  font-family: Nunito, system-ui, sans-serif; font-size: 17px; line-height: 1.5;
+  color: var(--ink); background: var(--white);
 }
 
-h1, h2, h3 { font-family: Fredoka, Nunito, system-ui, sans-serif; line-height: 1.15; margin: 0; }
-h1 { font-size: 40px; font-weight: 600; }
-h2 { font-size: 26px; font-weight: 600; margin-top: 26px; }
+h1, h2, h3 { font-family: Fredoka, Nunito, sans-serif; line-height: 1.1; margin: 0; }
+h2 { font-size: 24px; font-weight: 600; margin-top: 26px; }
 h3 { font-size: 20px; font-weight: 600; }
-p  { margin: 10px 0; }
+p { margin: 10px 0; }
 
-/* the wordmark: a warm gradient across a heavy rounded face */
-.wordmark {
-  font-family: Fredoka, sans-serif; font-weight: 600; font-size: 58px;
-  line-height: 1; letter-spacing: -1px; text-align: center; margin: 8px 0 2px;
-  background: linear-gradient(95deg, var(--teal) 0%, var(--amber) 48%, var(--coral) 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+/* the mark: THE over ONE, as it sits in the phone mockups */
+.mark { text-align: center; margin: 4px 0 18px; }
+.mark span {
+  display: block; font-family: Fredoka, sans-serif; font-weight: 600;
+  font-style: italic; letter-spacing: -.5px; line-height: .86;
 }
+.mark .the { font-size: 20px; }
+.mark .one { font-size: 44px; }
 .tagline {
-  text-align: center; text-transform: uppercase; letter-spacing: .18em;
-  font-size: 13px; font-weight: 700; color: var(--teal); margin: 0 0 22px;
+  text-align: center; text-transform: uppercase; letter-spacing: .16em;
+  font-size: 12px; font-weight: 700; color: var(--pink); margin: 6px 0 20px;
 }
-.crown { display: block; margin: 0 auto -6px; width: 54px; height: auto; }
+.eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 12px;
+           font-weight: 700; color: var(--muted); margin: 0 0 10px; }
 
-/* the round's position, as a small eyebrow */
-.eyebrow {
-  text-transform: uppercase; letter-spacing: .16em; font-size: 12px;
-  font-weight: 700; color: var(--muted); margin: 0 0 10px;
-}
-
-/* The contestant pair follows you down the page: you cannot judge Best Smile
-   if the faces have scrolled away. It shrinks once stuck so it does not eat
-   the screen, and the crop holds the face rather than the middle of the body. */
-.pair {
-  display: flex; gap: 12px; margin-bottom: 4px;
-  position: sticky; top: 0; z-index: 10;
-  background: var(--cream); padding: 8px 0 10px;
-  box-shadow: 0 8px 12px -8px rgba(18,58,67,.28);
-}
-.pair > div { flex: 1; min-width: 0; }
+/* the pair, with VS between them and a pink ring on the one you picked */
+.pair { display: flex; gap: 10px; align-items: flex-start;
+        position: sticky; top: 0; z-index: 10; background: var(--white);
+        padding: 6px 0 10px; }
+.pair > div { flex: 1; min-width: 0; position: relative; }
 .pair img {
   width: 100%; height: 150px; object-fit: cover; object-position: 50% 18%;
-  display: block; border-radius: var(--r); border: 3px solid var(--white);
-  box-shadow: var(--shadow);
+  display: block; border-radius: var(--r); border: 3px solid transparent;
 }
-.pair p {
-  margin: 6px 0 0; text-align: center; font-family: Fredoka, sans-serif;
-  font-weight: 600; font-size: 16px;
+.pair .picked img { border-color: var(--pink); }
+.pair .picked::after {
+  content: ''; position: absolute; left: 50%; bottom: 34px; width: 22px; height: 22px;
+  transform: translateX(-50%); border-radius: 999px; background: var(--pink);
+  box-shadow: 0 0 0 3px var(--white);
 }
-/* taller on a roomy screen, where there is space to spare */
-@media (min-height: 780px) { .pair img { height: 200px; } }
+.pair p { margin: 8px 0 0; text-align: center; font-size: 14px; font-weight: 700;
+          background: var(--grey); border-radius: 999px; padding: 5px 8px; }
+.vs { flex: 0 0 auto; align-self: center; font-family: Fredoka, sans-serif;
+      font-weight: 600; font-size: 20px; color: var(--ink); padding-top: 50px; }
+@media (min-height: 780px) { .pair img { height: 200px; } .vs { padding-top: 76px; } }
 
-/* a question block */
-.q { background: var(--white); border: 1px solid var(--line); border-radius: var(--r);
-     padding: 16px; margin: 14px 0; box-shadow: var(--shadow); }
-.q h3 { color: var(--teal); }
-.q .ask { font-size: 14px; color: var(--muted); margin: 14px 0 8px; font-weight: 600; }
+/* a question */
+.q { background: var(--white); border: 1px solid var(--grey-2); border-radius: var(--r);
+     padding: 16px; margin: 12px 0; box-shadow: var(--shadow); }
+.q h3 { font-size: 19px; }
+.hint { font-size: 13px; color: var(--muted); margin: 3px 0 0; }
+.ask { font-size: 14px; font-weight: 800; margin: 14px 0 8px; }
 
-/* two choices side by side, so fifty answers do not become fifty screens */
-.choices { display: flex; gap: 10px; }
+.choices { display: flex; gap: 8px; }
 .choices button { flex: 1; min-width: 0; }
 
 button {
-  font-family: Fredoka, sans-serif; font-size: 17px; font-weight: 500;
-  min-height: 52px; padding: 12px 14px; width: 100%;
-  border: 2px solid var(--line); border-radius: 999px;
-  background: var(--cream-2); color: var(--ink); cursor: pointer;
-  transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+  font-family: Fredoka, sans-serif; font-size: 16px; font-weight: 500;
+  min-height: 48px; padding: 10px 14px; width: 100%;
+  border: 0; border-radius: 999px; background: var(--grey); color: var(--ink);
+  cursor: pointer; transition: background-color .15s ease, color .15s ease;
 }
-button:hover { border-color: var(--teal); }
-button[aria-pressed="true"] {
-  background: var(--coral); border-color: var(--coral); color: var(--white); font-weight: 600;
-}
-button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-button:disabled { opacity: .45; cursor: not-allowed; }
+button:hover { background: var(--grey-2); }
+button[aria-pressed="true"] { background: var(--pink); color: var(--white); font-weight: 600; }
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+button:disabled { opacity: .4; cursor: not-allowed; }
 
-.cta {
-  background: var(--coral); border-color: var(--coral); color: var(--white);
-  font-size: 20px; font-weight: 600; min-height: 58px; margin-top: 18px;
-}
-.cta:hover { background: var(--coral-dark); border-color: var(--coral-dark); }
-.ghost { background: transparent; border-color: var(--teal); color: var(--teal); }
+/* the primary action is a black pill, as in every mockup */
+.cta { background: var(--ink); color: var(--white); font-size: 17px; font-weight: 600;
+       min-height: 54px; margin-top: 16px; }
+.cta:hover { background: #2A2A2E; }
+.cta:disabled { background: var(--grey-2); color: var(--muted); }
+.ghost { background: var(--white); box-shadow: inset 0 0 0 2px var(--grey-2); }
 
 input[type=text], input:not([type]) {
-  width: 100%; font-family: Nunito, sans-serif; font-size: 17px;
-  padding: 15px 16px; border: 2px solid var(--line); border-radius: var(--r);
-  background: var(--white); color: var(--ink);
+  width: 100%; font-family: Nunito, sans-serif; font-size: 17px; padding: 14px 16px;
+  border: 2px solid var(--grey-2); border-radius: var(--r); background: var(--white);
 }
-input:focus-visible { outline: 3px solid var(--gold); outline-offset: 1px; border-color: var(--teal); }
-label { display: block; font-size: 14px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+input:focus-visible { outline: 3px solid var(--pink); outline-offset: 1px; border-color: var(--pink); }
+label { display: block; font-size: 13px; font-weight: 800; margin-bottom: 6px; }
 
-/* the share slider */
-.slider { margin-top: 14px; }
-input[type=range] { width: 100%; height: 34px; accent-color: var(--coral); cursor: pointer; }
-.share { text-align: center; font-family: Fredoka, sans-serif; font-weight: 600;
-         font-size: 22px; color: var(--coral); margin: 2px 0 0; }
-.share small { display: block; font-family: Nunito, sans-serif; font-weight: 600;
-               font-size: 13px; color: var(--muted); }
+/* one slider, both sides — the deck's own control */
+.slider { margin-top: 12px; }
+.slider input[type=range] { width: 100%; height: 36px; accent-color: var(--pink); cursor: pointer; }
+.split { display: flex; justify-content: space-between; align-items: baseline;
+         font-family: Fredoka, sans-serif; font-weight: 600; font-size: 20px; }
+.split .lead { color: var(--pink); }
+.split .trail { color: var(--muted); }
+.split small { display: block; font-family: Nunito, sans-serif; font-weight: 700;
+               font-size: 12px; color: var(--muted); }
+.split.none { justify-content: center; font-size: 15px; color: var(--pink); font-weight: 600; }
 
-/* review and results cards */
-.card { background: var(--white); border: 1px solid var(--line); border-left: 5px solid var(--amber);
+/* cards, boards, banners */
+.card { background: var(--white); border: 1px solid var(--grey-2); border-left: 5px solid var(--yellow);
         border-radius: var(--r); padding: 14px 16px; margin: 12px 0; box-shadow: var(--shadow); }
-.card h3 { margin-bottom: 6px; }
+.card.incomplete { border-left-color: var(--pink); }
 .card ul { margin: 6px 0 0; padding-left: 18px; }
 .card li { margin: 4px 0; font-size: 15px; }
-
-.score { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 15px;
-         color: var(--white); background: var(--teal); border-radius: 999px;
-         padding: 2px 12px; display: inline-block; }
-.banner { background: var(--teal); color: var(--cream); border-radius: var(--r);
-          padding: 18px 20px; text-align: center; margin: 14px 0; }
-.banner strong { font-family: Fredoka, sans-serif; font-size: 34px; display: block; color: var(--gold); }
-.err  { color: var(--coral-dark); font-weight: 700; }
+.score { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 14px; color: var(--white);
+         background: var(--pink); border-radius: 999px; padding: 2px 11px; display: inline-block; }
+.banner { background: var(--pink); color: var(--white); border-radius: var(--r);
+          padding: 20px; text-align: center; margin: 12px 0; }
+.banner strong { font-family: Fredoka, sans-serif; font-size: 44px; display: block; color: var(--yellow); }
+.badge { display: inline-block; background: var(--yellow); color: var(--ink); font-weight: 800;
+         font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+         padding: 5px 12px; border-radius: 999px; }
+.err { color: var(--pink-dark); font-weight: 700; }
 .note { font-size: 14px; color: var(--muted); }
 
 ol.board { padding-left: 0; list-style: none; counter-reset: pos; }
 ol.board li { counter-increment: pos; display: flex; align-items: center; gap: 10px;
-              padding: 10px 14px; background: var(--white); border: 1px solid var(--line);
-              border-radius: var(--r); margin: 6px 0; }
+              padding: 10px 14px; background: var(--white); border: 1px solid var(--grey-2);
+              border-radius: var(--r); margin: 6px 0; font-size: 15px; }
 ol.board li::before { content: counter(pos); font-family: Fredoka, sans-serif; font-weight: 600;
-              color: var(--white); background: var(--teal); min-width: 30px; height: 30px;
-              border-radius: 999px; display: grid; place-items: center; font-size: 14px; }
-ol.board li .pts { margin-left: auto; font-family: Fredoka, sans-serif; color: var(--coral);
-  font-weight: 600; font-size: 14px; text-align: right; }
-ol.board li small { display: block; font-weight: 400; }
-ol.board li.me { border-color: var(--coral); border-width: 2px; }
+              color: var(--white); background: var(--ink); min-width: 28px; height: 28px;
+              border-radius: 999px; display: grid; place-items: center; font-size: 13px; }
+ol.board li .pts { margin-left: auto; font-family: Fredoka, sans-serif; color: var(--pink);
+              font-weight: 600; font-size: 14px; text-align: right; }
+ol.board li small { display: block; font-weight: 400; color: var(--muted); }
+ol.board li.me { box-shadow: inset 0 0 0 2px var(--pink); }
 
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; animation: none !important; }
-}
-
-/* what each category actually means, so twenty people judge the same thing */
-.hint { font-size: 14px; color: var(--muted); margin: 2px 0 0; font-style: italic; }
-
-/* an unanswered question, and the way back to it */
-.missing { color: var(--coral-dark); font-weight: 700; }
-.card.incomplete { border-left-color: var(--coral); }
-button.jump { width: auto; display: inline-block; min-height: 34px; padding: 4px 14px;
-  font-size: 13px; background: var(--coral); border-color: var(--coral); color: var(--white);
-  margin-left: 6px; vertical-align: middle; }
-button.jump:hover { background: var(--coral-dark); border-color: var(--coral-dark); }
-.q.needed { border-color: var(--coral); border-width: 2px; box-shadow: 0 0 0 4px rgba(233,95,94,.16); }
-
-/* what is left on this matchup, stated plainly rather than hidden behind a dead button */
-.todo { background: #FDECEC; border: 1px solid var(--coral); border-radius: var(--r);
-        padding: 12px 16px; margin-top: 18px; }
-.todo p { margin: 0 0 8px; color: var(--coral-dark); }
+/* what is still missing */
+.missing { color: var(--pink-dark); font-weight: 700; }
+button.jump { width: auto; display: inline-block; min-height: 32px; padding: 3px 13px;
+              font-size: 13px; background: var(--pink); color: var(--white); margin-left: 6px; }
+button.jump:hover { background: var(--pink-dark); }
+.q.needed, .q.unanswered { border-color: var(--pink); border-left: 5px solid var(--pink); }
+.todo { background: var(--pink-tint); border: 1px solid var(--pink); border-radius: var(--r);
+        padding: 12px 16px; margin-top: 16px; }
+.todo p { margin: 0 0 8px; color: var(--pink-dark); }
 .todo ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
-.q.unanswered { border-color: var(--coral); border-left: 5px solid var(--coral); }
 
-/* previous and next sit together */
-.nav { display: flex; gap: 10px; align-items: stretch; margin-top: 18px; }
+.nav { display: flex; gap: 10px; margin-top: 16px; }
 .nav .cta { flex: 2; margin-top: 0; }
 .nav .ghost { flex: 1; margin-top: 0; }
-
-/* the two reset controls sit below the primary action, quiet on purpose */
-.resets { display: flex; gap: 10px; margin-top: 14px; }
+.resets { display: flex; gap: 8px; margin-top: 12px; }
 .resets button { flex: 1; }
-button.small { min-height: 42px; font-size: 14px; padding: 8px 10px; }
+button.small { min-height: 40px; font-size: 13px; padding: 6px 10px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
