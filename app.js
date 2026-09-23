@@ -1,6 +1,7 @@
 import { MATCHUPS, CATEGORIES } from './config.js';
 import { submit, fetchState, fetchRows, normalizeCode } from './store.js';
 import { escapeHtml as esc } from './html.js';
+import { summariseMatchup } from './present-format.js';
 import { crowdResult, leaderboard } from './stats.js';
 import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft } from './draft.js';
 
@@ -101,10 +102,17 @@ function wirePlay(m) {
 
 function renderReview() {
   const done = isComplete(state.draft, MATCHUPS, CATEGORIES);
+  const summaries = MATCHUPS.map(m => summariseMatchup(m, state.draft[m.id], CATEGORIES));
+  const missing = summaries.filter(s => !s.complete).map(s => s.title);
   el.innerHTML = `
     <h1>Review</h1>
-    <p>${done ? 'Everything is answered.' : 'Some answers are missing. Go back and finish them.'}</p>
-    <pre style="white-space:pre-wrap">${JSON.stringify(state.draft, null, 1)}</pre>
+    <p>${done ? 'Everything is answered. Check it, then lock.'
+              : `Not finished. Still missing: <strong>${missing.join(', ')}</strong>.`}</p>
+    ${summaries.map(s => `
+      <div class="sum">
+        <h3>${s.title}</h3>
+        <ul>${s.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+      </div>`).join('')}
     <button id="back">Back</button>
     <button id="lock" ${done ? '' : 'disabled'}>Lock. This cannot be undone.</button>
     <p class="err" id="lockErr"></p>`;

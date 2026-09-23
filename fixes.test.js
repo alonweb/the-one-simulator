@@ -151,3 +151,28 @@ test('no votes yet reads as no votes, not as a row of zeros', () => {
   const m = { a: { id: 'c1', name: 'Ana' }, b: { id: 'c2', name: 'Bea' } };
   assert.equal(formatCounts({ c1: 0, c2: 0 }, m), 'no votes yet');
 });
+
+// A participant must be able to check their answers before an irreversible lock.
+// Raw JSON is not checkable.
+import { summariseMatchup } from './present-format.js';
+
+test('review reads the answers back in words', () => {
+  const m = { id:'m1', a:{ id:'c1', name:'Ana' }, b:{ id:'c2', name:'Camila' } };
+  const cats = [{ key:'smile', label:'Best Smile' }];
+  const entry = { overall:{ vote:'c1', predicted:'c2' },
+                  categories:{ smile:{ vote:'c1', contestant:'c2', share:68 } } };
+  const s = summariseMatchup(m, entry, cats);
+  assert.equal(s.title, 'Ana v Camila');
+  assert.deepEqual(s.lines, [
+    'Who is the one — you picked Ana, you think the room picks Camila',
+    'Best Smile — you picked Ana, you think the room gives Camila 68%'
+  ]);
+});
+
+test('review shows an unanswered question as missing', () => {
+  const m = { id:'m1', a:{ id:'c1', name:'Ana' }, b:{ id:'c2', name:'Camila' } };
+  const cats = [{ key:'smile', label:'Best Smile' }];
+  const s = summariseMatchup(m, { overall: null, categories: {} }, cats);
+  assert.deepEqual(s.lines, ['Who is the one — not answered', 'Best Smile — not answered']);
+  assert.equal(s.complete, false);
+});
