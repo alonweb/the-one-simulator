@@ -2,19 +2,20 @@
 export const ENDPOINT =
   'https://script.google.com/macros/s/AKfycbzuWOwMRpYABdBa3q3MYHlR_jQaiXm5j7EQ3VJOjy3-SDDD6ckSH7sBAUo0Xg0RFNP_/exec';
 
-// The specification's four categories. Confidence and Sense of Humour are judged from
-// video in the real product, and there is no video for this session, so they carry
-// `needsReplacement` until Mati and Avishai supply two photo-judgeable categories.
-// The presenter console shows a warning while any remain.
+// The four categories, taken from the pilot mockup (Pilot mockup.pdf, 2026-09-23).
+// The mockup answers the question the design left open: Confidence and Sense of Humour
+// need video, and the pilot replaces them with two categories that can be judged from a
+// photograph. `question` is the wording on the yellow banner; `label` is the short name
+// used on the review, results and presenter screens.
 export const CATEGORIES = [
-  { key: 'smile',      label: 'Best Smile', media: 'image',
+  { key: 'smile', label: 'Best smile', question: 'the best smile?', media: 'image',
     hint: 'Expression, smile, eyes, overall look.' },
-  { key: 'style',      label: 'Style', media: 'image',
+  { key: 'style', label: 'Style', question: 'the best style?', media: 'image',
     hint: 'Fashion, grooming, hair, accessories.' },
-  { key: 'confidence', label: 'Confidence', media: 'video', needsReplacement: true,
-    hint: 'Character, authenticity, communication, charisma.' },
-  { key: 'humour',     label: 'Sense of Humour', media: 'video', needsReplacement: true,
-    hint: 'Confidence, body language, eye contact, energy.' }
+  { key: 'body',  label: 'Body', question: 'the best body?', media: 'image',
+    hint: 'Posture, presence, the whole frame.' },
+  { key: 'mama',  label: 'Take to Mama', question: 'Take to Mama?', media: 'image',
+    hint: 'Who would you introduce at home?' }
 ];
 
 // Ten contestants in five matchups. These are the AI demo portraits already used in the

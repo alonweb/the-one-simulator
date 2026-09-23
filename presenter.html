@@ -6,25 +6,24 @@
 <title>THE ONE — presenter</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-  body { max-width: 900px; }
+  body { max-width: 900px; padding-bottom: 40px; }
   .bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 14px 0; }
-  .bar button { width: auto; min-width: 160px; }
+  .bar button { width: auto; min-width: 170px; margin-top: 0; }
   .bar input { width: 220px; }
   table { border-collapse: collapse; width: 100%; margin: 10px 0;
-          background: var(--white); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  th { background: var(--cream-2); font-family: Fredoka, sans-serif; font-weight: 500; color: var(--teal); }
+          border: 2px solid var(--ink); border-radius: 18px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--grey); }
+  th { background: var(--yellow); font-weight: 800; }
   tr:last-child td { border-bottom: 0; }
-  .warn { color: var(--coral-dark); font-weight: 700; background: #FDECEC;
-          border-left: 5px solid var(--coral); padding: 10px 14px; border-radius: var(--r); }
+  .warn { font-weight: 800; background: var(--yellow); padding: 10px 16px; border-radius: 14px; }
 </style>
 </head>
 <body>
-  <p class="wordmark" style="font-size:38px">THE ONE</p>
-  <p class="tagline">Presenter</p>
+  <header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
+  <p class="eyebrow">Presenter</p>
   <div class="bar">
     <input id="code" placeholder="Session code">
     <button id="load" class="ghost">Load</button>

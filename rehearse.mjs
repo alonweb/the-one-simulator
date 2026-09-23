@@ -27,7 +27,7 @@ for (let i = 1; i <= N; i++) {
       };
     }
   }
-  const body = { kind: 'submission', sessionCode: CODE, submissionId: `rehearse-${i}`,
+  const body = { kind: 'submission', sessionCode: CODE, submissionId: `rehearse-${CODE}-${started}-${i}`,
                  participant: `Tester ${i}`, answers };
   const res = await fetch(ENDPOINT, {
     method: 'POST',
