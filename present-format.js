@@ -16,17 +16,22 @@ export function summariseMatchup(matchup, entry, categories) {
   const e = entry || { overall: null, categories: {} };
   const lines = [];
   let complete = true;
+  const add = (text, answered, key) => {
+    if (!answered) complete = false;
+    lines.push(answered ? { text, answered: true, key, matchupId: matchup.id }
+                        : { text, answered: false, key, matchupId: matchup.id });
+  };
 
   const o = e.overall;
   if (o && o.vote && o.predicted) {
-    lines.push(`Who is the one — you picked ${name(o.vote)}, you think the room picks ${name(o.predicted)}`);
-  } else { lines.push('Who is the one — not answered'); complete = false; }
+    add(`Who is the one — you picked ${name(o.vote)}, you think the room picks ${name(o.predicted)}`, true, 'overall');
+  } else { add('Who is the one — not answered', false, 'overall'); }
 
   for (const c of categories) {
     const a = (e.categories || {})[c.key];
     if (a && a.vote && a.contestant && typeof a.share === 'number') {
-      lines.push(`${c.label} — you picked ${name(a.vote)}, you think the room gives ${name(a.contestant)} ${a.share}%`);
-    } else { lines.push(`${c.label} — not answered`); complete = false; }
+      add(`${c.label} — you picked ${name(a.vote)}, you think the room gives ${name(a.contestant)} ${a.share}%`, true, c.key);
+    } else { add(`${c.label} — not answered`, false, c.key); }
   }
   return { title: `${matchup.a.name} v ${matchup.b.name}`, lines, complete };
 }

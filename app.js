@@ -81,6 +81,8 @@ function renderJoin() {
 function renderPlay() {
   const m = MATCHUPS[state.index];
   const entry = state.draft[m.id];
+  const summary = summariseMatchup(m, entry, CATEGORIES);
+  const gaps = summary.lines.filter(l => !l.answered);
   const on = (who, chosen) => `aria-pressed="${chosen === who ? 'true' : 'false'}"`;
   el.innerHTML = `
     <p class="eyebrow">Matchup ${state.index + 1} of ${MATCHUPS.length}</p>
@@ -88,7 +90,7 @@ function renderPlay() {
       <div><img src="${m.a.photo}" alt="${m.a.name}"><p>${m.a.name}</p></div>
       <div><img src="${m.b.photo}" alt="${m.b.name}"><p>${m.b.name}</p></div>
     </div>
-    <div class="q">
+    <div class="q" id="q-overall">
       <h3>Who is the one?</h3>
       <p class="ask">Your own pick</p>
       <div class="choices">
@@ -102,12 +104,21 @@ function renderPlay() {
       </div>
     </div>
     ${CATEGORIES.map(c => renderCategory(m, c, entry.categories[c.key])).join('')}
-    <button id="next" class="cta">${state.index + 1 === MATCHUPS.length ? 'Review my answers' : 'Next matchup'}</button>
+    ${gaps.length ? `<div class="todo">
+      <p><strong>${gaps.length} still to answer on this matchup.</strong></p>
+      <ul>${gaps.map(g => `<li><button class="jump" data-k="${g.key}">${esc(g.text.split(' — ')[0])}</button></li>`).join('')}</ul>
+    </div>` : ''}
+    <div class="nav">
+      ${state.index > 0 ? '<button id="prev" class="ghost">Previous matchup</button>' : ''}
+      <button id="next" class="cta" ${gaps.length ? 'disabled' : ''}>${
+        gaps.length ? 'Answer all five first'
+                    : state.index + 1 === MATCHUPS.length ? 'Review my answers' : 'Next matchup'}</button>
+    </div>
     <div class="resets">
       <button id="clearOne" class="ghost small">Clear this matchup</button>
       <button id="startOver" class="ghost small">Start from the beginning</button>
     </div>`;
-  wirePlay(m);
+  wirePlay(m, gaps);
 }
 
 function renderCategory(m, c, a) {
@@ -116,7 +127,7 @@ function renderCategory(m, c, a) {
   const share = a && typeof a.share === 'number' ? a.share : 51;
   const who = a && a.contestant ? (a.contestant === m.a.id ? m.a.name : m.b.name) : 'them';
   return `
-    <div class="q">
+    <div class="q" id="q-${c.key}">
       <h3>${c.label}</h3>
       <p class="ask">Your own pick</p>
       <div class="choices">
@@ -136,7 +147,7 @@ function renderCategory(m, c, a) {
     </div>`;
 }
 
-function wirePlay(m) {
+function wirePlay(m, gaps) {
   el.querySelectorAll('button[data-q]').forEach(b => {
     b.onclick = () => {
       const q = b.dataset.q, f = b.dataset.f, v = b.dataset.v;
@@ -155,6 +166,29 @@ function wirePlay(m) {
     if (state.index + 1 === MATCHUPS.length) go('review');
     else { state.index++; go('play'); }
   };
+  const prev = document.getElementById('prev');
+  if (prev) prev.onclick = () => { state.index--; go('play'); };
+
+  for (const g of gaps) {
+    const block = document.getElementById('q-' + g.key);
+    if (block) block.classList.add('unanswered');
+  }
+  el.querySelectorAll('.todo button.jump').forEach(b => {
+    b.onclick = () => {
+      const target = document.getElementById('q-' + b.dataset.k);
+      if (target) { target.classList.add('needed'); target.scrollIntoView({ block: 'center' }); }
+    };
+  });
+
+  // a jump from the review lands on the exact question that was missing
+  if (state.focus) {
+    const target = document.getElementById('q-' + state.focus);
+    state.focus = null; saveDraft(state);
+    if (target) {
+      target.classList.add('needed');
+      target.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }
+  }
   document.getElementById('clearOne').onclick = () => {
     if (!confirm(`Clear your answers for ${m.a.name} v ${m.b.name}? The other matchups are not touched.`)) return;
     state.draft = clearMatchup(state.draft, m.id);
@@ -179,14 +213,24 @@ function renderReview() {
     <p>${done ? 'Everything is answered. Check it, then lock.'
               : `Not finished. Still missing: <strong>${missing.join(', ')}</strong>.`}</p>
     ${summaries.map(s => `
-      <div class="card">
+      <div class="card ${s.complete ? '' : 'incomplete'}">
         <h3>${s.title}</h3>
-        <ul>${s.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+        <ul>${s.lines.map(l => l.answered
+          ? `<li>${esc(l.text)}</li>`
+          : `<li class="missing">${esc(l.text)} <button class="jump" data-m="${l.matchupId}" data-k="${l.key}">Answer it</button></li>`
+        ).join('')}</ul>
       </div>`).join('')}
     <button id="back" class="ghost">Back to the matchups</button>
     <button id="lock" class="cta" ${done ? '' : 'disabled'}>Lock my answers</button>
     <p class="err" id="lockErr"></p>`;
   document.getElementById('back').onclick = () => { state.index = 0; go('play'); };
+  el.querySelectorAll('button.jump').forEach(b => {
+    b.onclick = () => {
+      state.index = MATCHUPS.findIndex(m => m.id === b.dataset.m);
+      state.focus = b.dataset.k;
+      go('play');
+    };
+  });
   document.getElementById('lock').onclick = async () => {
     const btn = document.getElementById('lock');
     btn.disabled = true; btn.textContent = 'Submitting…';

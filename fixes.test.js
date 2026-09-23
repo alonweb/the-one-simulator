@@ -163,18 +163,29 @@ test('review reads the answers back in words', () => {
                   categories:{ smile:{ vote:'c1', contestant:'c2', share:68 } } };
   const s = summariseMatchup(m, entry, cats);
   assert.equal(s.title, 'Ana v Camila');
-  assert.deepEqual(s.lines, [
+  assert.deepEqual(s.lines.map(l => l.text), [
     'Who is the one — you picked Ana, you think the room picks Camila',
     'Best Smile — you picked Ana, you think the room gives Camila 68%'
   ]);
+  assert.ok(s.lines.every(l => l.answered));
 });
 
-test('review shows an unanswered question as missing', () => {
+test('an unanswered question is marked and carries where to jump to', () => {
   const m = { id:'m1', a:{ id:'c1', name:'Ana' }, b:{ id:'c2', name:'Camila' } };
   const cats = [{ key:'smile', label:'Best Smile' }];
   const s = summariseMatchup(m, { overall: null, categories: {} }, cats);
-  assert.deepEqual(s.lines, ['Who is the one — not answered', 'Best Smile — not answered']);
   assert.equal(s.complete, false);
+  assert.deepEqual(s.lines, [
+    { text: 'Who is the one — not answered', answered: false, key: 'overall', matchupId: 'm1' },
+    { text: 'Best Smile — not answered',     answered: false, key: 'smile',   matchupId: 'm1' }
+  ]);
+});
+
+test('a half-answered question still counts as missing', () => {
+  const m = { id:'m1', a:{ id:'c1', name:'Ana' }, b:{ id:'c2', name:'Camila' } };
+  const cats = [{ key:'smile', label:'Best Smile' }];
+  const s = summariseMatchup(m, { overall:{ vote:'c1' }, categories:{} }, cats);
+  assert.equal(s.lines[0].answered, false);
 });
 
 // A device keeps its answers so a reload cannot lose them, which also means a device
