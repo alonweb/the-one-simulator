@@ -2,7 +2,7 @@ import { MATCHUPS, CATEGORIES } from './config.js';
 import { submit, fetchState, fetchRows, normalizeCode } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { summariseMatchup } from './present-format.js';
-import { crowdResult, leaderboard } from './stats.js';
+import { crowdResult, leaderboard, contestantStanding } from './stats.js';
 import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset, shapeOf, draftMatches, clearMatchup } from './draft.js';
 
 const el = document.getElementById('screen');
@@ -60,7 +60,7 @@ function renderJoin() {
   el.innerHTML = `
     <svg class="crown" viewBox="0 0 64 42" aria-hidden="true" fill="none"><path d="M6 36 L4 10 L18 22 L32 4 L46 22 L60 10 L58 36 Z" fill="#F2B134" stroke="#E09A1E" stroke-width="2.5" stroke-linejoin="round"/></svg>
     <p class="wordmark">THE ONE</p>
-    <p class="tagline">Who will be the one?</p>
+    <p class="tagline">Pick. Predict. Compete.</p>
     <div class="q">
       <label for="code">Session code</label>
       <input id="code" placeholder="The presenter will say it">
@@ -69,7 +69,7 @@ function renderJoin() {
       <button id="start" class="cta">Start</button>
       <p class="err" id="joinErr"></p>
     </div>
-    <p class="note">You will see five matchups. For each one you say who you pick, and who you think the room will pick.</p>`;
+    <p class="note">Five matchups. On each one you make two calls: who <strong>you</strong> prefer, and who you think <strong>everyone else</strong> will choose. Points come from reading the room, not from your own taste.</p>`;
   document.getElementById('start').onclick = () => {
     const code = document.getElementById('code').value.trim();
     const name = document.getElementById('name').value.trim();
@@ -92,12 +92,12 @@ function renderPlay() {
     </div>
     <div class="q" id="q-overall">
       <h3>Who is the one?</h3>
-      <p class="ask">Your own pick</p>
+      <p class="ask">Your pick — who do you prefer?</p>
       <div class="choices">
         <button data-q="overall" data-f="vote" data-v="${m.a.id}" ${on(m.a.id, entry.overall?.vote)}>${m.a.name}</button>
         <button data-q="overall" data-f="vote" data-v="${m.b.id}" ${on(m.b.id, entry.overall?.vote)}>${m.b.name}</button>
       </div>
-      <p class="ask">Who will the room pick?</p>
+      <p class="ask">Crowd prediction — who will everyone else choose?</p>
       <div class="choices">
         <button data-q="overall" data-f="predicted" data-v="${m.a.id}" ${on(m.a.id, entry.overall?.predicted)}>${m.a.name}</button>
         <button data-q="overall" data-f="predicted" data-v="${m.b.id}" ${on(m.b.id, entry.overall?.predicted)}>${m.b.name}</button>
@@ -129,12 +129,13 @@ function renderCategory(m, c, a) {
   return `
     <div class="q" id="q-${c.key}">
       <h3>${c.label}</h3>
-      <p class="ask">Your own pick</p>
+      ${c.hint ? `<p class="hint">${c.hint}</p>` : ''}
+      <p class="ask">Your pick</p>
       <div class="choices">
         <button data-q="${c.key}" data-f="vote" data-v="${m.a.id}" ${onVote(m.a.id)}>${m.a.name}</button>
         <button data-q="${c.key}" data-f="vote" data-v="${m.b.id}" ${onVote(m.b.id)}>${m.b.name}</button>
       </div>
-      <p class="ask">Who will the room pick, and by how much?</p>
+      <p class="ask">Crowd prediction — who, and by how much?</p>
       <div class="choices">
         <button data-q="${c.key}" data-f="contestant" data-v="${m.a.id}" ${onPred(m.a.id)}>${m.a.name}</button>
         <button data-q="${c.key}" data-f="contestant" data-v="${m.b.id}" ${onPred(m.b.id)}>${m.b.name}</button>
@@ -295,7 +296,14 @@ async function renderResults() {
         <ul>${Object.entries(s.categories).map(([k, r]) =>
           `<li><strong>${label(k)}</strong>: ${r.points} — ${why(r)}</li>`).join('')}</ul></div>`;
     }).join('') : ''}
-    <h2>Leaderboard</h2>
+    <h2>The contest</h2>
+    <p class="note">The other competition: how the contestants did with the crowd.</p>
+    <ol class="board">${contestantStanding(rows, MATCHUPS, CATEGORIES).map(c =>
+      `<li><span>${esc(c.name)} <small class="note">v ${esc(c.opponent)}</small></span>
+        <span class="pts">${c.tied ? 'tied' : c.wonOverall ? 'won' : 'lost'} · ${c.overallShare}% · ${c.categoriesWon}/${c.categoriesTotal}</span></li>`).join('')}</ol>
+
+    <h2>The prediction</h2>
+    <p class="note">Who read the room best.</p>
     <ol class="board" id="board">${board.map(r =>
       `<li class="${r.submissionId === state.submissionId ? 'me' : ''}">${esc(r.participant)}<span class="pts">${r.total}</span></li>`).join('')}</ol>
     <button id="again" class="ghost">Start again on this phone</button>

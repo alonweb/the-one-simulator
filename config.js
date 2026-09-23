@@ -7,10 +7,14 @@ export const ENDPOINT =
 // `needsReplacement` until Mati and Avishai supply two photo-judgeable categories.
 // The presenter console shows a warning while any remain.
 export const CATEGORIES = [
-  { key: 'smile',      label: 'Best Smile' },
-  { key: 'style',      label: 'Style' },
-  { key: 'confidence', label: 'Confidence',       needsReplacement: true },
-  { key: 'humour',     label: 'Sense of Humour',  needsReplacement: true }
+  { key: 'smile',      label: 'Best Smile', media: 'image',
+    hint: 'Expression, smile, eyes, overall look.' },
+  { key: 'style',      label: 'Style', media: 'image',
+    hint: 'Fashion, grooming, hair, accessories.' },
+  { key: 'confidence', label: 'Confidence', media: 'video', needsReplacement: true,
+    hint: 'Character, authenticity, communication, charisma.' },
+  { key: 'humour',     label: 'Sense of Humour', media: 'video', needsReplacement: true,
+    hint: 'Confidence, body language, eye contact, energy.' }
 ];
 
 // Ten contestants in five matchups. These are the AI demo portraits already used in the

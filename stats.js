@@ -115,3 +115,38 @@ export function sessionStats(rows, crowdByMatchup) {
     leaderboard: board
   };
 }
+
+/**
+ * The other competition. The deck is explicit that two run at once: contestants
+ * compete for the crowd's vote while players compete to predict it, and there are
+ * two winners. This is the contestants' side, which the leaderboard never showed.
+ */
+export function contestantStanding(rows, matchups, categories) {
+  const keys = categories.map(c => c.key);
+  const out = [];
+  for (const m of matchups) {
+    const crowd = crowdResult(rows, m.id, keys, [m.a.id, m.b.id]);
+    const total = Object.values(crowd.overallCounts).reduce((a, b) => a + b, 0);
+    for (const side of [m.a, m.b]) {
+      const votes = crowd.overallCounts[side.id] || 0;
+      let categoriesWon = 0;
+      for (const key of keys) {
+        const shares = crowd.categories[key] || {};
+        const mine = shares[side.id] || 0;
+        const theirs = Object.entries(shares)
+          .filter(([id]) => id !== side.id)
+          .reduce((mx, [, v]) => Math.max(mx, v), 0);
+        if (mine > theirs) categoriesWon++;
+      }
+      out.push({
+        id: side.id, name: side.name, matchupId: m.id,
+        opponent: side.id === m.a.id ? m.b.name : m.a.name,
+        votes, overallShare: total ? Math.round((votes * 100) / total) : 0,
+        wonOverall: crowd.overallWinner === side.id,
+        tied: crowd.overallTied, categoriesWon, categoriesTotal: keys.length
+      });
+    }
+  }
+  return out.sort((a, b) =>
+    (b.wonOverall - a.wonOverall) || (b.overallShare - a.overallShare) || (b.categoriesWon - a.categoriesWon));
+}

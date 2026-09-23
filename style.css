@@ -148,12 +148,17 @@ ol.board li { counter-increment: pos; display: flex; align-items: center; gap: 1
 ol.board li::before { content: counter(pos); font-family: Fredoka, sans-serif; font-weight: 600;
               color: var(--white); background: var(--teal); min-width: 30px; height: 30px;
               border-radius: 999px; display: grid; place-items: center; font-size: 14px; }
-ol.board li .pts { margin-left: auto; font-family: Fredoka, sans-serif; color: var(--coral); font-weight: 600; }
+ol.board li .pts { margin-left: auto; font-family: Fredoka, sans-serif; color: var(--coral);
+  font-weight: 600; font-size: 14px; text-align: right; }
+ol.board li small { display: block; font-weight: 400; }
 ol.board li.me { border-color: var(--coral); border-width: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* what each category actually means, so twenty people judge the same thing */
+.hint { font-size: 14px; color: var(--muted); margin: 2px 0 0; font-style: italic; }
 
 /* an unanswered question, and the way back to it */
 .missing { color: var(--coral-dark); font-weight: 700; }

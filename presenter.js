@@ -2,7 +2,7 @@ import { MATCHUPS, CATEGORIES } from './config.js';
 import { fetchRows, fetchState, setState, normalizeCode } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { formatCounts } from './present-format.js';
-import { crowdResult, sessionStats } from './stats.js';
+import { crowdResult, sessionStats, contestantStanding } from './stats.js';
 
 const out = document.getElementById('out');
 const codeInput = document.getElementById('code');
@@ -49,7 +49,15 @@ async function refresh() {
     <p>Hardest to predict: ${stats.categoryDifficulty.length
       ? stats.categoryDifficulty.map(d => `${(CATEGORIES.find(c => c.key === d.key) || {}).label || d.key} (average error ${d.meanAbsoluteError.toFixed(1)})`).join(', ')
       : 'no data yet'}.</p>
-    <h2>Leaderboard</h2>
+    <h2>The contest — how the contestants did</h2>
+    <table><tr><th>Contestant</th><th>Against</th><th>Result</th><th>Crowd share</th><th>Categories won</th></tr>
+      ${contestantStanding(rows, MATCHUPS, CATEGORIES).map(c =>
+        `<tr><td><strong>${esc(c.name)}</strong></td><td>${esc(c.opponent)}</td>
+         <td>${c.tied ? 'tied' : c.wonOverall ? 'won' : 'lost'}</td>
+         <td>${c.overallShare}%</td><td>${c.categoriesWon} of ${c.categoriesTotal}</td></tr>`).join('')}
+    </table>
+
+    <h2>The prediction — who read the room best</h2>
     <table><tr><th>#</th><th>Name</th><th>Points</th></tr>
       ${stats.leaderboard.map(r => `<tr><td>${r.rank}</td><td>${esc(r.participant)}</td><td>${r.total}</td></tr>`).join('')}
     </table>

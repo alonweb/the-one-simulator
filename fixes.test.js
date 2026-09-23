@@ -248,3 +248,48 @@ test('clearing a matchup does not mutate the draft it was given', () => {
   clearMatchup(d, 'm1');
   assert.deepEqual(d.m1.overall, { vote:'a', predicted:'b' });
 });
+
+// The deck is explicit that TWO competitions run at once: contestants compete for the
+// crowd's vote, players compete to predict it. The simulation only ever showed the
+// players' board, so half the product was invisible.
+import { contestantStanding } from './stats.js';
+
+test('a contestant standing reports each contestant, not each player', () => {
+  const M = [{ id:'m1', a:{ id:'c1', name:'Ana' }, b:{ id:'c2', name:'Bea' } }];
+  const C = [{ key:'smile' }, { key:'style' }];
+  const rows = [1,2,3].map(i => ({ submissionId:'s'+i, participant:'p'+i,
+    answers:{ m1:{ overall:{ vote:'c1', predicted:'c1' },
+                   categories:{ smile:{ vote:'c1', contestant:'c1', share:60 },
+                                style:{ vote:'c2', contestant:'c2', share:60 } } } } }));
+  const out = contestantStanding(rows, M, C);
+  const ana = out.find(x => x.id === 'c1');
+  const bea = out.find(x => x.id === 'c2');
+  assert.equal(ana.name, 'Ana');
+  assert.equal(ana.wonOverall, true);
+  assert.equal(ana.overallShare, 100);
+  assert.equal(ana.categoriesWon, 1);
+  assert.equal(bea.wonOverall, false);
+  assert.equal(bea.categoriesWon, 1);
+});
+
+test('a tied matchup gives neither contestant the win', () => {
+  const M = [{ id:'m1', a:{ id:'c1', name:'Ana' }, b:{ id:'c2', name:'Bea' } }];
+  const rows = [
+    { submissionId:'a', participant:'a', answers:{ m1:{ overall:{ vote:'c1', predicted:'c1' }, categories:{} } } },
+    { submissionId:'b', participant:'b', answers:{ m1:{ overall:{ vote:'c2', predicted:'c2' }, categories:{} } } }
+  ];
+  const out = contestantStanding(rows, M, []);
+  assert.equal(out.every(c => c.wonOverall === false), true);
+  assert.equal(out[0].tied, true);
+});
+
+test('contestants are ranked by the crowd, strongest first', () => {
+  const M = [{ id:'m1', a:{ id:'c1', name:'Ana' }, b:{ id:'c2', name:'Bea' } },
+             { id:'m2', a:{ id:'c3', name:'Cat' }, b:{ id:'c4', name:'Dee' } }];
+  const rows = [{ submissionId:'s', participant:'p', answers:{
+    m1:{ overall:{ vote:'c2', predicted:'c2' }, categories:{} },
+    m2:{ overall:{ vote:'c3', predicted:'c3' }, categories:{} } } }];
+  const out = contestantStanding(rows, M, []);
+  assert.equal(out[0].wonOverall, true);
+  assert.equal(out[out.length - 1].wonOverall, false);
+});
