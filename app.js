@@ -30,10 +30,26 @@ const saved = loadDraft();
 const state = draftMatches(saved, MATCHUPS, CATEGORIES) ? saved : freshState();
 if (saved && state !== saved) clearDraft();
 
-function go(screen) { state.screen = screen; saveDraft(state); render(); }
+function go(screen) { state.screen = screen; saveDraft(state); render(); window.scrollTo(0, 0); }
+
+/** Re-renders in place, holding the page still. Tapping an answer must not move it. */
 function set(matchupId, key, value) {
   state.draft = setAnswer(state.draft, matchupId, key, value);
-  saveDraft(state); render();
+  saveDraft(state);
+  const y = window.scrollY;
+  render();
+  window.scrollTo(0, y);
+}
+
+/** The both-sides readout under a slider, as its own markup so it can be
+    updated on its own without rebuilding the screen around it. */
+function splitMarkup(m, pos) {
+  const split = splitFromSlider(pos, m.a.id, m.b.id);
+  if (!split) return '<div class="split none">Slide toward whoever you think the room picks</div>';
+  return `<div class="split">
+      <span class="${split.contestant === m.a.id ? 'lead' : 'trail'}">${pos}%<small>${m.a.name}</small></span>
+      <span class="${split.contestant === m.b.id ? 'lead' : 'trail'}">${100 - pos}%<small>${m.b.name}</small></span>
+    </div>`;
 }
 
 function render() {
@@ -127,7 +143,6 @@ function renderPlay() {
 function renderCategory(m, c, a) {
   const onVote = (who) => `aria-pressed="${a && a.vote === who ? 'true' : 'false'}"`;
   const pos = sliderFromSplit(a, m.a.id);
-  const split = splitFromSlider(pos, m.a.id, m.b.id);
   return `
     <div class="q" id="q-${c.key}">
       <h3>${c.label}</h3>
@@ -141,12 +156,7 @@ function renderCategory(m, c, a) {
       <div class="slider">
         <input type="range" min="0" max="100" value="${pos}" data-q="${c.key}" data-f="split"
                aria-label="${c.label}: how the room splits between ${m.a.name} and ${m.b.name}">
-        ${split
-          ? `<div class="split">
-               <span class="${split.contestant === m.a.id ? 'lead' : 'trail'}">${pos}%<small>${m.a.name}</small></span>
-               <span class="${split.contestant === m.b.id ? 'lead' : 'trail'}">${100 - pos}%<small>${m.b.name}</small></span>
-             </div>`
-          : `<div class="split none">Slide toward whoever you think the room picks</div>`}
+        ${splitMarkup(m, pos)}
       </div>
     </div>`;
 }
@@ -160,12 +170,22 @@ function wirePlay(m, gaps) {
     };
   });
   el.querySelectorAll('input[type=range]').forEach(r => {
-    r.oninput = () => {
+    const write = (v) => {
       const q = r.dataset.q;
       const cur = state.draft[m.id].categories[q] || {};
-      const split = splitFromSlider(Number(r.value), m.a.id, m.b.id);
-      set(m.id, q, split ? { ...cur, ...split } : { vote: cur.vote });
+      const split = splitFromSlider(v, m.a.id, m.b.id);
+      state.draft = setAnswer(state.draft, m.id, q, split ? { ...cur, ...split } : { vote: cur.vote });
+      saveDraft(state);
     };
+    // while dragging, touch only the readout: rebuilding the screen would destroy
+    // the slider under the finger and throw the page to the top
+    r.oninput = () => {
+      write(Number(r.value));
+      const readout = r.parentElement.querySelector('.split');
+      if (readout) readout.outerHTML = splitMarkup(m, Number(r.value));
+    };
+    // once released, rebuild so the completeness gate and the outlines catch up
+    r.onchange = () => { write(Number(r.value)); const y = window.scrollY; render(); window.scrollTo(0, y); };
   });
   document.getElementById('next').onclick = () => {
     if (state.index + 1 === MATCHUPS.length) go('review');
