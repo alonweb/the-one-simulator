@@ -4,10 +4,12 @@ export function emptyDraft(matchups, categories) {
   return d;
 }
 
+export const DEFAULT_SHARE = 51;
+
 export function setAnswer(draft, matchupId, key, value) {
   const next = JSON.parse(JSON.stringify(draft));
   if (key === 'overall') next[matchupId].overall = value;
-  else next[matchupId].categories[key] = value;
+  else next[matchupId].categories[key] = { share: DEFAULT_SHARE, ...value };
   return next;
 }
 

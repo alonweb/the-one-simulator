@@ -26,11 +26,12 @@ export function scoreOverall(predicted, crowdWinner) {
 }
 
 export function scoreMatchup(answer, crowd) {
-  const overall = scoreOverall(answer.overall.predicted, crowd.overallWinner);
+  const a = answer || {};
+  const overall = scoreOverall(a.overall && a.overall.predicted, crowd.overallWinner);
   const categories = {};
   let total = overall;
-  for (const key of Object.keys(answer.categories)) {
-    const r = scoreCategory(answer.categories[key], crowd.categories[key] || {});
+  for (const key of Object.keys(a.categories || {})) {
+    const r = scoreCategory(a.categories[key], crowd.categories[key] || {});
     categories[key] = r;
     total += r.points;
   }

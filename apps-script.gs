@@ -43,6 +43,11 @@ function doPost(e) {
       session_().appendRow([body.sessionCode, body.state, new Date()]);
       return json_({ ok: true, state: body.state });
     }
+    // a round the presenter has closed must not accept more submissions, or a late
+    // lock joins the crowd result after the leaderboard has been announced
+    if (readState_(body.sessionCode) !== 'open') {
+      return json_({ ok: false, error: 'the round is closed' });
+    }
     const sh = responses_();
     const existing = sh.getDataRange().getValues().slice(1);
     for (const r of existing) {

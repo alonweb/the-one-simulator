@@ -1,5 +1,9 @@
 import { ENDPOINT } from './config.js';
 
+export function normalizeCode(code) {
+  return String(code == null ? '' : code).trim().toUpperCase();
+}
+
 export function buildSubmission({ sessionCode, participant, answers, submissionId }) {
   return { kind: 'submission', sessionCode, participant, answers, submissionId };
 }
@@ -22,7 +26,11 @@ async function post(body) {
 export async function submit(payload) {
   let lastError;
   for (let attempt = 0; attempt < 3; attempt++) {
-    try { return await post(buildSubmission(payload)); }
+    try {
+      const r = await post(buildSubmission(payload));
+      if (!r || r.ok !== true) throw new Error((r && r.error) || 'rejected by the server');
+      return r;
+    }
     catch (err) { lastError = err; await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); }
   }
   throw lastError;
@@ -33,12 +41,12 @@ export async function setState(sessionCode, state) {
 }
 
 export async function fetchState(sessionCode) {
-  const res = await fetch(`${ENDPOINT}?what=state&code=${encodeURIComponent(sessionCode)}`);
+  const res = await fetch(`${ENDPOINT}?what=state&code=${encodeURIComponent(normalizeCode(sessionCode))}`);
   const data = await res.json();
   return data.state || 'open';
 }
 
 export async function fetchRows(sessionCode) {
-  const res = await fetch(`${ENDPOINT}?what=rows&code=${encodeURIComponent(sessionCode)}`);
+  const res = await fetch(`${ENDPOINT}?what=rows&code=${encodeURIComponent(normalizeCode(sessionCode))}`);
   return parseRows(await res.json());
 }

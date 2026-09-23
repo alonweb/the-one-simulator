@@ -38,9 +38,13 @@ Spec and plan live in the HumanPatterns project under
 
 1. Choose a session code and tell the room. It keeps strangers who find the link out of the data.
 2. Participants open the participant link, enter the code and their name, and play.
-3. Watch them arrive in the presenter console.
+3. Watch the lock count in the presenter console. Note that nothing appears until a
+   person **locks**, because the page sends one request at lock and nothing before it.
+   The console cannot tell you who has joined and is still playing, so count the room.
 4. When everyone has locked: **Close the round**, then **Reveal results**.
-5. **Export raw answers** before you close the laptop. That file is what the session can be
+5. **Export raw answers** before you close the laptop. Do not edit `config.js` once the
+   first person has locked: category keys and matchup ids are the join between a stored
+   answer and the reveal, and changing one strands the answers already in the sheet. That file is what the session can be
    re-scored from afterwards, and it is the only copy that does not need the sheet.
 
 ## Afterwards

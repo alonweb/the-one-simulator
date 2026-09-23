@@ -1,5 +1,6 @@
 import { MATCHUPS, CATEGORIES } from './config.js';
-import { submit, fetchState, fetchRows } from './store.js';
+import { submit, fetchState, fetchRows, normalizeCode } from './store.js';
+import { escapeHtml as esc } from './html.js';
 import { crowdResult, leaderboard } from './stats.js';
 import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft } from './draft.js';
 
@@ -36,7 +37,7 @@ function renderJoin() {
     const code = document.getElementById('code').value.trim();
     const name = document.getElementById('name').value.trim();
     if (!code || !name) { document.getElementById('joinErr').textContent = 'Both are needed.'; return; }
-    state.sessionCode = code; state.participant = name; go('play');
+    state.sessionCode = normalizeCode(code); state.participant = name; go('play');
   };
 }
 
@@ -134,15 +135,23 @@ function renderLocked() {
 
 async function renderResults() {
   el.innerHTML = '<p>Working out the results…</p>';
-  const rows = await fetchRows(state.sessionCode);
+  let rows;
+  try {
+    rows = await fetchRows(state.sessionCode);
+  } catch (err) {
+    el.innerHTML = '<h1>Results</h1><p class="err">Could not load the results.</p><button id="retry">Try again</button>';
+    document.getElementById('retry').onclick = () => renderResults();
+    return;
+  }
   const keys = CATEGORIES.map(c => c.key);
   const crowd = {};
-  for (const m of MATCHUPS) crowd[m.id] = crowdResult(rows, m.id, keys);
+  for (const m of MATCHUPS) crowd[m.id] = crowdResult(rows, m.id, keys, [m.a.id, m.b.id]);
   const board = leaderboard(rows, crowd);
   const me = board.find(r => r.submissionId === state.submissionId);
   const label = (k) => (CATEGORIES.find(c => c.key === k) || {}).label || k;
   const why = (r) => r.exact ? 'exact hit, 6'
     : r.sameBand ? 'right band, 1'
+    : r.reason === 'no-data' ? 'nobody in the room picked your contestant, 0'
     : r.reason === 'below-floor' ? `your contestant only got ${r.actual}%, below the floor, 0`
     : `the room said ${r.actual}%, wrong band, 0`;
   el.innerHTML = `
@@ -161,7 +170,7 @@ async function renderResults() {
           `<li>${label(k)}: ${r.points} — ${why(r)}</li>`).join('')}</ul>`;
     }).join('') : ''}
     <h2>Leaderboard</h2>
-    <ol>${board.map(r => `<li>${r.participant} — ${r.total}</li>`).join('')}</ol>`;
+    <ol>${board.map(r => `<li>${esc(r.participant)} — ${r.total}</li>`).join('')}</ol>`;
 }
 
 render();
