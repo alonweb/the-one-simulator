@@ -1,0 +1,146 @@
+/* THE ONE — warm Colombian poster. Palette sampled from the reference artwork:
+   coral from the START button, amber and gold from the wordmark and crown,
+   teal from the cool half of the wordmark, cream from the sky wash. */
+:root {
+  --cream:      #FDFBF3;
+  --cream-2:    #F6F0E2;
+  --coral:      #E95F5E;
+  --coral-dark: #C94746;
+  --amber:      #F2A03D;
+  --gold:       #F2B134;
+  --teal:       #1D6F7E;
+  --teal-dark:  #12525E;
+  --ink:        #123A43;
+  --muted:      #62777D;
+  --line:       #E2DACA;
+  --white:      #FFFFFF;
+  --r:          14px;
+  --shadow:     0 2px 0 rgba(18,58,67,.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 20px 16px 40px;
+  max-width: 560px;
+  font-family: Nunito, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--cream);
+}
+
+h1, h2, h3 { font-family: Fredoka, Nunito, system-ui, sans-serif; line-height: 1.15; margin: 0; }
+h1 { font-size: 40px; font-weight: 600; }
+h2 { font-size: 26px; font-weight: 600; margin-top: 26px; }
+h3 { font-size: 20px; font-weight: 600; }
+p  { margin: 10px 0; }
+
+/* the wordmark: a warm gradient across a heavy rounded face */
+.wordmark {
+  font-family: Fredoka, sans-serif; font-weight: 600; font-size: 58px;
+  line-height: 1; letter-spacing: -1px; text-align: center; margin: 8px 0 2px;
+  background: linear-gradient(95deg, var(--teal) 0%, var(--amber) 48%, var(--coral) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.tagline {
+  text-align: center; text-transform: uppercase; letter-spacing: .18em;
+  font-size: 13px; font-weight: 700; color: var(--teal); margin: 0 0 22px;
+}
+.crown { display: block; margin: 0 auto -6px; width: 54px; height: auto; }
+
+/* the round's position, as a small eyebrow */
+.eyebrow {
+  text-transform: uppercase; letter-spacing: .16em; font-size: 12px;
+  font-weight: 700; color: var(--muted); margin: 0 0 10px;
+}
+
+/* the contestant pair */
+.pair { display: flex; gap: 12px; margin-bottom: 4px; }
+.pair > div { flex: 1; min-width: 0; }
+.pair img {
+  width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block;
+  border-radius: var(--r); border: 3px solid var(--white); box-shadow: var(--shadow);
+}
+.pair p {
+  margin: 8px 0 0; text-align: center; font-family: Fredoka, sans-serif;
+  font-weight: 600; font-size: 17px;
+}
+
+/* a question block */
+.q { background: var(--white); border: 1px solid var(--line); border-radius: var(--r);
+     padding: 16px; margin: 14px 0; box-shadow: var(--shadow); }
+.q h3 { color: var(--teal); }
+.q .ask { font-size: 14px; color: var(--muted); margin: 14px 0 8px; font-weight: 600; }
+
+/* two choices side by side, so fifty answers do not become fifty screens */
+.choices { display: flex; gap: 10px; }
+.choices button { flex: 1; min-width: 0; }
+
+button {
+  font-family: Fredoka, sans-serif; font-size: 17px; font-weight: 500;
+  min-height: 52px; padding: 12px 14px; width: 100%;
+  border: 2px solid var(--line); border-radius: 999px;
+  background: var(--cream-2); color: var(--ink); cursor: pointer;
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+button:hover { border-color: var(--teal); }
+button[aria-pressed="true"] {
+  background: var(--coral); border-color: var(--coral); color: var(--white); font-weight: 600;
+}
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+.cta {
+  background: var(--coral); border-color: var(--coral); color: var(--white);
+  font-size: 20px; font-weight: 600; min-height: 58px; margin-top: 18px;
+}
+.cta:hover { background: var(--coral-dark); border-color: var(--coral-dark); }
+.ghost { background: transparent; border-color: var(--teal); color: var(--teal); }
+
+input[type=text], input:not([type]) {
+  width: 100%; font-family: Nunito, sans-serif; font-size: 17px;
+  padding: 15px 16px; border: 2px solid var(--line); border-radius: var(--r);
+  background: var(--white); color: var(--ink);
+}
+input:focus-visible { outline: 3px solid var(--gold); outline-offset: 1px; border-color: var(--teal); }
+label { display: block; font-size: 14px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+
+/* the share slider */
+.slider { margin-top: 14px; }
+input[type=range] { width: 100%; height: 34px; accent-color: var(--coral); cursor: pointer; }
+.share { text-align: center; font-family: Fredoka, sans-serif; font-weight: 600;
+         font-size: 22px; color: var(--coral); margin: 2px 0 0; }
+.share small { display: block; font-family: Nunito, sans-serif; font-weight: 600;
+               font-size: 13px; color: var(--muted); }
+
+/* review and results cards */
+.card { background: var(--white); border: 1px solid var(--line); border-left: 5px solid var(--amber);
+        border-radius: var(--r); padding: 14px 16px; margin: 12px 0; box-shadow: var(--shadow); }
+.card h3 { margin-bottom: 6px; }
+.card ul { margin: 6px 0 0; padding-left: 18px; }
+.card li { margin: 4px 0; font-size: 15px; }
+
+.score { font-family: Fredoka, sans-serif; font-weight: 600; font-size: 15px;
+         color: var(--white); background: var(--teal); border-radius: 999px;
+         padding: 2px 12px; display: inline-block; }
+.banner { background: var(--teal); color: var(--cream); border-radius: var(--r);
+          padding: 18px 20px; text-align: center; margin: 14px 0; }
+.banner strong { font-family: Fredoka, sans-serif; font-size: 34px; display: block; color: var(--gold); }
+.err  { color: var(--coral-dark); font-weight: 700; }
+.note { font-size: 14px; color: var(--muted); }
+
+ol.board { padding-left: 0; list-style: none; counter-reset: pos; }
+ol.board li { counter-increment: pos; display: flex; align-items: center; gap: 10px;
+              padding: 10px 14px; background: var(--white); border: 1px solid var(--line);
+              border-radius: var(--r); margin: 6px 0; }
+ol.board li::before { content: counter(pos); font-family: Fredoka, sans-serif; font-weight: 600;
+              color: var(--white); background: var(--teal); min-width: 30px; height: 30px;
+              border-radius: 999px; display: grid; place-items: center; font-size: 14px; }
+ol.board li .pts { margin-left: auto; font-family: Fredoka, sans-serif; color: var(--coral); font-weight: 600; }
+ol.board li.me { border-color: var(--coral); border-width: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

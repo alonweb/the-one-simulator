@@ -4,20 +4,37 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>THE ONE — presenter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 <style>
-  body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; line-height: 1.5; }
-  button { font-size: 16px; padding: 10px 14px; margin-right: 8px; }
-  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-  th, td { border-bottom: 1px solid #ccc; text-align: left; padding: 6px 8px; }
-  .warn { color: #a00; }
+  body { max-width: 900px; }
+  .bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 14px 0; }
+  .bar button { width: auto; min-width: 160px; }
+  .bar input { width: 220px; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0;
+          background: var(--white); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  th { background: var(--cream-2); font-family: Fredoka, sans-serif; font-weight: 500; color: var(--teal); }
+  tr:last-child td { border-bottom: 0; }
+  .warn { color: var(--coral-dark); font-weight: 700; background: #FDECEC;
+          border-left: 5px solid var(--coral); padding: 10px 14px; border-radius: var(--r); }
 </style>
 </head>
 <body>
-  <h1>Presenter</h1>
-  <p><input id="code" placeholder="Session code"> <button id="load">Load</button></p>
-  <p><button id="close">Close the round</button> <button id="reveal">Reveal results</button>
-     <button id="export">Export raw answers</button></p>
-  <div id="out">Enter the session code and press Load.</div>
+  <p class="wordmark" style="font-size:38px">THE ONE</p>
+  <p class="tagline">Presenter</p>
+  <div class="bar">
+    <input id="code" placeholder="Session code">
+    <button id="load" class="ghost">Load</button>
+  </div>
+  <div class="bar">
+    <button id="close" class="ghost">Close the round</button>
+    <button id="reveal" class="cta" style="margin-top:0">Reveal results</button>
+    <button id="export" class="ghost">Export raw answers</button>
+  </div>
+  <div id="out"><p class="note">Enter the session code and press Load.</p></div>
   <script type="module" src="presenter.js"></script>
 </body>
 </html>
