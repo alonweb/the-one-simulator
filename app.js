@@ -3,9 +3,17 @@ import { submit, fetchState, fetchRows, normalizeCode } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { summariseMatchup } from './present-format.js';
 import { crowdResult, leaderboard } from './stats.js';
-import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft } from './draft.js';
+import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset } from './draft.js';
 
 const el = document.getElementById('screen');
+
+// ?reset=1 wipes this device and starts over. Deliberately not a visible control during
+// play: a participant who resets mid-round would submit twice under a new identity.
+if (wantsReset(location.search)) {
+  clearDraft();
+  location.replace(location.pathname);
+}
+
 const ordinal = (n) => n + (['th','st','nd','rd'][(n%100-n%10!=10)*(n%10<4)*n%10] || 'th');
 const state = loadDraft() || {
   screen: 'join', sessionCode: '', participant: '',
@@ -206,8 +214,12 @@ async function renderResults() {
           `<li><strong>${label(k)}</strong>: ${r.points} — ${why(r)}</li>`).join('')}</ul></div>`;
     }).join('') : ''}
     <h2>Leaderboard</h2>
-    <ol class="board">${board.map(r =>
-      `<li class="${r.submissionId === state.submissionId ? 'me' : ''}">${esc(r.participant)}<span class="pts">${r.total}</span></li>`).join('')}</ol>`;
+    <ol class="board" id="board">${board.map(r =>
+      `<li class="${r.submissionId === state.submissionId ? 'me' : ''}">${esc(r.participant)}<span class="pts">${r.total}</span></li>`).join('')}</ol>
+    <button id="again" class="ghost">Start again on this phone</button>
+    <p class="note">Only do this once the round is over. It clears your answers from this device.</p>`;
+  const again = document.getElementById('again');
+  if (again) again.onclick = () => { clearDraft(); location.replace(location.pathname); };
 }
 
 render();

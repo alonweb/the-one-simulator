@@ -38,3 +38,9 @@ export function loadDraft() {
 export function clearDraft() {
   try { localStorage.removeItem(KEY); } catch (e) {}
 }
+
+/** True only for an explicit ?reset= flag, so a participant never resets by accident. */
+export function wantsReset(search) {
+  const v = new URLSearchParams(search || '').get('reset');
+  return v !== null && v !== '0' && v !== 'false' && v !== '';
+}

@@ -176,3 +176,15 @@ test('review shows an unanswered question as missing', () => {
   assert.deepEqual(s.lines, ['Who is the one — not answered', 'Best Smile — not answered']);
   assert.equal(s.complete, false);
 });
+
+// A device keeps its answers so a reload cannot lose them, which also means a device
+// cannot start a second round without an explicit reset.
+import { wantsReset } from './draft.js';
+
+test('a reset is requested only by the explicit query flag', () => {
+  assert.equal(wantsReset('?reset=1'), true);
+  assert.equal(wantsReset('?reset=yes'), true);
+  assert.equal(wantsReset(''), false);
+  assert.equal(wantsReset('?code=ABC'), false);
+  assert.equal(wantsReset('?reset=0'), false);
+});

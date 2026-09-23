@@ -56,17 +56,27 @@ p  { margin: 10px 0; }
   font-weight: 700; color: var(--muted); margin: 0 0 10px;
 }
 
-/* the contestant pair */
-.pair { display: flex; gap: 12px; margin-bottom: 4px; }
+/* The contestant pair follows you down the page: you cannot judge Best Smile
+   if the faces have scrolled away. It shrinks once stuck so it does not eat
+   the screen, and the crop holds the face rather than the middle of the body. */
+.pair {
+  display: flex; gap: 12px; margin-bottom: 4px;
+  position: sticky; top: 0; z-index: 10;
+  background: var(--cream); padding: 8px 0 10px;
+  box-shadow: 0 8px 12px -8px rgba(18,58,67,.28);
+}
 .pair > div { flex: 1; min-width: 0; }
 .pair img {
-  width: 100%; aspect-ratio: 4/5; object-fit: cover; display: block;
-  border-radius: var(--r); border: 3px solid var(--white); box-shadow: var(--shadow);
+  width: 100%; height: 150px; object-fit: cover; object-position: 50% 18%;
+  display: block; border-radius: var(--r); border: 3px solid var(--white);
+  box-shadow: var(--shadow);
 }
 .pair p {
-  margin: 8px 0 0; text-align: center; font-family: Fredoka, sans-serif;
-  font-weight: 600; font-size: 17px;
+  margin: 6px 0 0; text-align: center; font-family: Fredoka, sans-serif;
+  font-weight: 600; font-size: 16px;
 }
+/* taller on a roomy screen, where there is space to spare */
+@media (min-height: 780px) { .pair img { height: 200px; } }
 
 /* a question block */
 .q { background: var(--white); border: 1px solid var(--line); border-radius: var(--r);
