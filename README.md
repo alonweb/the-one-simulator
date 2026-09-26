@@ -70,7 +70,7 @@ data is a focus group's opinions about photographs, not anything that needs to.
 
 ## On the day
 
-1. Open `presenter.html`, enter the presenter key and press **Load**.
+1. Open `presenter.html`, enter the presenter key and press **Enter**. The statistics page opens; **Log out** takes you back.
 2. Participants open the participant link, enter their name, and play. After locking they
    answer the survey and see a thank-you screen. They never see results.
 3. Watch the lock count and the survey count in the presenter page. Nothing appears until a

@@ -11,6 +11,15 @@ const CODE = new URLSearchParams(location.search).get('code') || SESSION_LABEL;
 
 const out = document.getElementById('out');
 const keyInput = document.getElementById('key');
+const login = document.getElementById('login');
+const statsEl = document.getElementById('stats');
+const loginErr = document.getElementById('loginErr');
+
+function showStats() { login.hidden = true; statsEl.hidden = false; }
+function showLogin(message) {
+  statsEl.hidden = true; login.hidden = false;
+  loginErr.innerHTML = message ? `<p class="warn">${esc(message)}</p>` : '';
+}
 let rows = [];
 let surveyRows = [];
 
@@ -60,11 +69,12 @@ function surveySection() {
 let refreshing = false;
 
 async function refresh() {
-  if (!key()) { out.innerHTML = '<p class="warn">Enter the presenter key.</p>'; return; }
+  if (!key()) { showLogin('Enter the presenter key.'); return; }
   if (refreshing) return;
   refreshing = true;
   try {
     rows = await fetchRows(CODE, key());
+    showStats();
     // the survey tab is created by the first answer; a missing one is not an error
     surveyRows = await fetchSurvey(CODE, key()).catch(() => []);
     const crowd = buildCrowd(rows);
@@ -124,13 +134,19 @@ async function refresh() {
       }).join('')}
       </details>`;
   } catch (err) {
-    out.innerHTML = `<p class="warn">Could not load: ${esc(err.message)}. Nothing was changed. Check the key and press Load to try again.</p>`;
+    // a refused key sends the presenter back to the login; anything else is shown in place
+    if (/key/i.test(err.message)) showLogin(`${err.message}. Check it and try again.`);
+    else out.innerHTML = `<p class="warn">Could not load: ${esc(err.message)}. Nothing was changed. It will retry by itself.</p>`;
   } finally {
     refreshing = false;
   }
 }
 
-document.getElementById('load').onclick = refresh;
+document.getElementById('loginForm').onsubmit = (e) => { e.preventDefault(); refresh(); };
+document.getElementById('logout').onclick = () => {
+  try { localStorage.removeItem(KEY_STORE); } catch (e) {}
+  keyInput.value = ''; out.innerHTML = ''; showLogin('');
+};
 document.getElementById('close').onclick = async () => {
   if (!key()) { out.innerHTML = '<p class="warn">The presenter key is needed to do that.</p>'; return; }
   if (!confirm('Close the round now? Nobody who has not locked will be able to.')) return;
@@ -150,5 +166,5 @@ document.getElementById('export').onclick = () => {
   a.download = `the-one-session-${CODE}.json`;
   a.click();
 };
-setInterval(() => { if (key()) refresh(); }, 15000);
+setInterval(() => { if (key() && login.hidden) refresh(); }, 15000);
 if (key()) refresh();

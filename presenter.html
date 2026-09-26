@@ -30,17 +30,23 @@
 <body>
   <header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
   <p class="eyebrow">Presenter</p>
-  <div class="bar">
-    <input id="key" type="password" placeholder="Presenter key" autocomplete="off">
-    <button id="load" class="cta" style="margin-top:0">Load</button>
+  <div id="login">
+    <p>Enter the presenter key to see the statistics.</p>
+    <form class="bar" id="loginForm">
+      <input id="key" type="password" placeholder="Presenter key" autocomplete="current-password" autofocus>
+      <button id="load" class="cta" style="margin-top:0" type="submit">Enter</button>
+    </form>
+    <p class="note">The key stays on this device. Never give it to participants.</p>
+    <div id="loginErr"></div>
   </div>
-  <p class="note">The key opens this page and closes the round. It stays on this device.
-    Never give it to participants.</p>
-  <div class="bar">
-    <button id="close" class="ghost">Close the round</button>
-    <button id="export" class="ghost">Export raw answers</button>
+  <div id="stats" hidden>
+    <div class="bar">
+      <button id="close" class="ghost">Close the round</button>
+      <button id="export" class="ghost">Export raw answers</button>
+      <button id="logout" class="ghost">Log out</button>
+    </div>
+    <div id="out"></div>
   </div>
-  <div id="out"><p class="note">Enter the presenter key and press Load.</p></div>
   <script type="module" src="presenter.js"></script>
 </body>
 </html>
