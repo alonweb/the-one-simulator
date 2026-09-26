@@ -44,9 +44,10 @@ Spec and plan live in the HumanPatterns project under
 ## Session label
 
 Nobody types a session code any more. Every row this build writes carries `SESSION_LABEL`
-from `config.js`, and the presenter page shows that label's rows only, so the build-time
-test sessions in the same sheet never mix in. Before a second focus group, change the label.
-To look at an older session, open `presenter.html?code=DEMO`.
+from `config.js`, and closing the round applies to that label. The presenter page shows
+**everything in the sheet**; **Reset the sheet** wipes all three tabs so a real session
+starts clean (export first, it cannot be undone). `presenter.html?code=DEMO` narrows the
+page to one session's rows.
 
 ## The survey
 
@@ -61,7 +62,7 @@ types: `scale` (min..max with end labels), `choice` (one of `options`), `text`.
 
 The endpoint URL is in `config.js`, so it reaches every participant's browser. That is
 unavoidable: the page has to write to it. What the presenter key adds is that only the
-presenter can **close a round** and only the presenter can **read anyone's answers** — the
+presenter can **close a round**, **wipe the sheet**, and **read anyone's answers** — the
 statistics page is refused without it. Submitting answers needs no key.
 
 Nothing here is real security. The key travels in the request to our own endpoint and

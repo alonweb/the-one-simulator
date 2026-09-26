@@ -1,13 +1,13 @@
 import { MATCHUPS, CATEGORIES, SURVEY, SESSION_LABEL } from './config.js';
-import { fetchRows, fetchSurvey, fetchState, setState } from './store.js';
+import { fetchRows, fetchSurvey, fetchState, setState, resetSheet } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { formatCounts, answerRows } from './present-format.js';
 import { crowdResult, sessionStats, contestantStanding } from './stats.js';
 import { surveyTable } from './survey.js';
 
-// Everything this build writes carries SESSION_LABEL, so that is what the page shows.
-// ?code=DEMO on the URL shows an older session in the same sheet instead.
-const CODE = new URLSearchParams(location.search).get('code') || SESSION_LABEL;
+// The page shows the whole sheet. ?code=X on the URL narrows it to one session's rows.
+// Closing the round applies to SESSION_LABEL, which is what every new lock carries.
+const CODE = new URLSearchParams(location.search).get('code') || '';
 
 const out = document.getElementById('out');
 const keyInput = document.getElementById('key');
@@ -79,11 +79,11 @@ async function refresh() {
     surveyRows = await fetchSurvey(CODE, key()).catch(() => []);
     const crowd = buildCrowd(rows);
     const stats = sessionStats(rows, crowd);
-    const state = await fetchState(CODE).catch(() => 'unknown');
+    const state = await fetchState(SESSION_LABEL).catch(() => 'unknown');
     const pending = CATEGORIES.filter(c => c.needsReplacement);
     const warning = pending.length
       ? `<p class="warn">${pending.map(c => c.label).join(' and ')} still need replacing in config.js — they are judged from video, and there is none for this session.</p>` : '';
-    const header = `<p>${CODE !== SESSION_LABEL ? `Showing session <strong>${esc(CODE)}</strong>. ` : ''}Round is <strong>${state}</strong>. Locked in: <strong>${rows.length}</strong>${
+    const header = `<p>${CODE ? `Showing session <strong>${esc(CODE)}</strong> only. ` : 'Everything in the sheet. '}Round is <strong>${state}</strong>. Locked in: <strong>${rows.length}</strong>${
       rows.length ? '' : ' — nobody has locked yet'}. Survey answered: <strong>${surveyRows.length}</strong>.</p>`;
 
     // Before anyone locks there is nothing to report, and a page of zeros reads as a fault.
@@ -151,7 +151,7 @@ document.getElementById('close').onclick = async () => {
   if (!key()) { out.innerHTML = '<p class="warn">The presenter key is needed to do that.</p>'; return; }
   if (!confirm('Close the round now? Nobody who has not locked will be able to.')) return;
   try {
-    const r = await setState(CODE, 'closed', key());
+    const r = await setState(SESSION_LABEL, 'closed', key());
     if (!r || r.ok !== true) throw new Error((r && r.error) || 'the server refused it');
   } catch (err) {
     out.innerHTML = `<p class="warn">Could not close the round: ${esc(err.message)}.</p>`;
@@ -159,11 +159,24 @@ document.getElementById('close').onclick = async () => {
   }
   refresh();
 };
+document.getElementById('reset').onclick = async () => {
+  if (!key()) { out.innerHTML = '<p class="warn">The presenter key is needed to do that.</p>'; return; }
+  if (!confirm('Wipe the sheet? Every answer, survey and round state goes. Export first if you want to keep them.')) return;
+  if (!confirm('This cannot be undone. Wipe everything now?')) return;
+  try {
+    const r = await resetSheet(key());
+    if (!r || r.ok !== true) throw new Error((r && r.error) || 'the server refused it');
+  } catch (err) {
+    out.innerHTML = `<p class="warn">Could not wipe the sheet: ${esc(err.message)}.</p>`;
+    return;
+  }
+  refresh();
+};
 document.getElementById('export').onclick = () => {
-  const blob = new Blob([JSON.stringify({ session: CODE, answers: rows, survey: surveyRows }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ session: CODE || 'all', answers: rows, survey: surveyRows }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `the-one-session-${CODE}.json`;
+  a.download = `the-one-${CODE || 'all'}-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
 };
 setInterval(() => { if (key() && login.hidden) refresh(); }, 15000);

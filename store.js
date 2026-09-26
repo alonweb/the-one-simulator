@@ -104,6 +104,7 @@ export async function fetchState(sessionCode) {
  * not swallowed, so the presenter sees "wrong presenter key" rather than an empty room.
  */
 async function fetchGated(what, sessionCode, key) {
+  // no session code means the whole sheet
   const q = `what=${what}&code=${encodeURIComponent(normalizeCode(sessionCode))}&key=${encodeURIComponent(String(key == null ? '' : key).trim())}`;
   const res = await fetch(`${ENDPOINT}?${q}`);
   const data = await res.json();
@@ -113,3 +114,13 @@ async function fetchGated(what, sessionCode, key) {
 
 export async function fetchRows(sessionCode, key) { return fetchGated('rows', sessionCode, key); }
 export async function fetchSurvey(sessionCode, key) { return fetchGated('survey', sessionCode, key); }
+
+/** The wipe, checked before it leaves the page. It empties every tab of the sheet. */
+export function buildResetWrite(key) {
+  if (!String(key == null ? '' : key).trim()) throw new Error('The presenter key is needed.');
+  return { kind: 'reset', key: String(key).trim() };
+}
+
+export async function resetSheet(key) {
+  return post(buildResetWrite(key));
+}

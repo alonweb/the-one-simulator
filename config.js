@@ -29,9 +29,8 @@ export const MATCHUPS = [
   { id: 'm5', a: { id: 'c9', name: 'Luciana', photo: 'photos/c9.jpg' }, b: { id: 'c10', name: 'Manuela', photo: 'photos/c10.jpg' } }
 ];
 
-// Every row this build writes carries this label, so the presenter console shows this
-// session only and the build-time test sessions in the same sheet stay out of the way.
-// Change it before a second focus group so the two do not mix. Nobody types it.
+// Every row this build writes carries this label; closing the round applies to it. The
+// presenter page shows the whole sheet regardless, and Reset wipes it. Nobody types it.
 export const SESSION_LABEL = 'LIVE1';
 
 // The survey. Players reach it after locking, or from the menu at any time. From Mati's

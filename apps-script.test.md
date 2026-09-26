@@ -41,6 +41,16 @@ curl -sS -L --data '{"kind":"survey","sessionCode":"T1","submissionId":"srv-1","
 # expect {"ok":true,"duplicate":true}
 curl -sS -L "$URL?what=survey&code=T1&key=$KEY"
 # expect exactly one row
+
+# 8. no code returns the whole tab
+curl -sS -L "$URL?what=rows&key=$KEY"
+# expect every row in the responses tab
+
+# 9. reset wipes the three tabs below their headers (do this last)
+curl -sS -L --data '{"kind":"reset","key":"WRONG"}' -H 'Content-Type: text/plain' "$URL"
+# expect {"ok":false,"error":"wrong presenter key"} and nothing wiped
+curl -sS -L --data "{\"kind\":\"reset\",\"key\":\"$KEY\"}" -H 'Content-Type: text/plain' "$URL"
+# expect {"ok":true,"reset":true}; the three tabs keep only their header rows
 ```
 
 Delete the `T1` rows from all three sheets afterwards.

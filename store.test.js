@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSubmission, parseRows, buildStateWrite } from './store.js';
+import { buildSubmission, parseRows, buildStateWrite, buildResetWrite } from './store.js';
 
 test('a submission carries the session code and a stable id', () => {
   const s = buildSubmission({ sessionCode: 'X1', participant: 'Ana', answers: { m1: {} }, submissionId: 'fixed-id' });
@@ -45,4 +45,9 @@ test('only the two states the presenter can set are accepted', () => {
   assert.equal(buildStateWrite('X1', 'closed', 'k').state, 'closed');
   assert.throws(() => buildStateWrite('X1', 'open', 'k'), /closed or revealed/i);
   assert.throws(() => buildStateWrite('X1', 'nonsense', 'k'), /closed or revealed/i);
+});
+
+test('a reset carries the key and nothing else, and refuses to leave without one', () => {
+  assert.deepEqual(buildResetWrite(' k1 '), { kind: 'reset', key: 'k1' });
+  assert.throws(() => buildResetWrite(''), /presenter key/);
 });

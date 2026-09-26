@@ -10,8 +10,9 @@
  * It is deliberately not in this file, because this file is published. Until it is set,
  * the server refuses to close a round, and refuses to show the statistics at all.
  *
- * The key protects two things: closing the round (a write) and reading anyone's answers
- * or survey (the presenter's statistics page). Submitting answers needs no key.
+ * The key is the presenter's password. It protects three things: reading anyone's
+ * answers or survey (the statistics page), closing the round, and wiping the sheet.
+ * Submitting answers needs no key.
  */
 const RESPONSES = 'responses';
 const SESSION = 'session';
@@ -46,9 +47,11 @@ function appendOnce_(sh, body) {
   return json_({ ok: true, duplicate: false });
 }
 
+/** Every row in the tab, or only one session's when a code is given. */
 function rowsOf_(sh, code) {
   return sh.getDataRange().getValues().slice(1)
-    .filter(r => String(r[1]) === String(code))
+    .filter(r => !String(code || '').trim() || String(r[1]) === String(code))
+    .filter(r => r[4] !== '' && r[4] != null)
     .map(r => ({ receivedAt: r[0], submissionId: r[2], participant: r[3], answers: JSON.parse(r[4] || 'null') }));
 }
 
@@ -70,6 +73,22 @@ function presenterKey_() {
   return String(PropertiesService.getScriptProperties().getProperty('PRESENTER_KEY') || '').trim();
 }
 
+const NO_KEY = 'No presenter key is set on the server. Project Settings -> Script properties -> PRESENTER_KEY.';
+
+/** Fail closed: with no key configured nobody gets in, including the presenter. */
+function keyCheck_(key) {
+  const expected = presenterKey_();
+  if (!expected) return NO_KEY;
+  if (String(key == null ? '' : key).trim() !== expected) return 'wrong presenter key';
+  return null;
+}
+
+/** Empties a tab below its header row. */
+function wipe_(sh) {
+  const last = sh.getLastRow();
+  if (last > 1) sh.getRange(2, 1, last - 1, Math.max(sh.getLastColumn(), 1)).clearContent();
+}
+
 function doPost(e) {
   // Twenty simultaneous locks queue here. The wait must be inside the try, or a
   // timeout escapes as an HTML error page instead of JSON the client can act on.
@@ -84,15 +103,17 @@ function doPost(e) {
     // Closing a round and revealing the results are the two irreversible acts in a
     // session, and the endpoint URL is in every participant's browser. Fail closed:
     // with no key configured, nobody can do either, including the presenter.
+    // Wiping the sheet is how the presenter starts clean before the real session. It
+    // empties the three tabs below their headers and cannot be undone: export first.
+    if (body.kind === 'reset') {
+      const refused = keyCheck_(body.key);
+      if (refused) return json_({ ok: false, error: refused });
+      wipe_(responses_()); wipe_(survey_()); wipe_(session_());
+      return json_({ ok: true, reset: true });
+    }
     if (body.kind === 'state') {
-      var expected = presenterKey_();
-      if (!expected) {
-        return json_({ ok: false, error: 'No presenter key is set on the server. ' +
-          'Project Settings -> Script properties -> PRESENTER_KEY.' });
-      }
-      if (String(body.key == null ? '' : body.key).trim() !== expected) {
-        return json_({ ok: false, error: 'wrong presenter key' });
-      }
+      const refused = keyCheck_(body.key);
+      if (refused) return json_({ ok: false, error: refused });
       if (String(body.state) !== 'closed' && String(body.state) !== 'revealed') {
         return json_({ ok: false, error: 'the state must be closed or revealed' });
       }
@@ -126,17 +147,15 @@ function doGet(e) {
   const what = (e && e.parameter && e.parameter.what) || 'rows';
   // A read without a session code used to return every row of every session. One is
   // always available to anyone entitled to read, so requiring it costs nothing.
-  if (!String(code).trim()) return json_({ ok: false, error: 'a session code is needed' });
-  if (what === 'state') return json_({ ok: true, state: readState_(code) });
-  // Everything else is the statistics page: every player's answers and survey. The
-  // participant link is public, so only the presenter key opens it. Fail closed.
-  const expected = presenterKey_();
-  if (!expected) {
-    return json_({ ok: false, error: 'No presenter key is set on the server. ' +
-      'Project Settings -> Script properties -> PRESENTER_KEY.' });
+  if (what === 'state') {
+    if (!String(code).trim()) return json_({ ok: false, error: 'a session code is needed' });
+    return json_({ ok: true, state: readState_(code) });
   }
-  const key = (e && e.parameter && e.parameter.key) || '';
-  if (String(key).trim() !== expected) return json_({ ok: false, error: 'wrong presenter key' });
+  // Everything else is the statistics page: every player's answers and survey, the whole
+  // sheet unless a code narrows it. The participant link is public, so only the
+  // presenter key opens it.
+  const refused = keyCheck_((e && e.parameter && e.parameter.key) || '');
+  if (refused) return json_({ ok: false, error: refused });
   if (what === 'survey') return json_({ ok: true, rows: rowsOf_(survey_(), code) });
   return json_({ ok: true, rows: rowsOf_(responses_(), code) });
 }
