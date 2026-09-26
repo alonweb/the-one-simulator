@@ -42,11 +42,16 @@ export function answerRows(matchup, answer, crowd, score, categories) {
   const rows = [];
   const o = (answer && answer.overall) || {};
   const c = crowd || {};
+  const overallPts = score ? score.overall || 0 : 0;
   rows.push({
     question: 'Who is the one',
     yours: o.predicted ? `${name(o.predicted)} (voted ${name(o.vote)})` : 'not answered',
     room: c.overallTied ? 'tied' : c.overallWinner ? name(c.overallWinner) : 'no votes',
-    points: score ? score.overall || 0 : 0
+    points: overallPts,
+    why: !o.predicted ? 'not answered, 0'
+      : c.overallTied ? 'room tied, nobody scores'
+      : !c.overallWinner ? 'no votes, 0'
+      : overallPts ? 'right, +2' : 'wrong, 0'
   });
   for (const cat of categories || []) {
     const a = ((answer && answer.categories) || {})[cat.key];
@@ -57,7 +62,13 @@ export function answerRows(matchup, answer, crowd, score, categories) {
       question: cat.label,
       yours: a && a.contestant ? `${name(a.contestant)} ${a.share}% (voted ${name(a.vote)})` : 'not answered',
       room: a && a.contestant && shares[a.contestant] !== undefined ? `${name(a.contestant)} ${shares[a.contestant]}%` : all,
-      points: s ? s.points || 0 : 0
+      points: s ? s.points || 0 : 0,
+      why: !a || !a.contestant || !s ? 'not answered, 0'
+        : s.exact ? 'exact hit: same band +1, exact +5'
+        : s.sameBand ? 'same band, +1'
+        : s.reason === 'below-floor' ? `room gave her ${s.actual}%, below 51, 0`
+        : s.reason === 'no-data' ? 'nobody in the room picked her, 0'
+        : `room said ${s.actual}%, another band, 0`
     });
   }
   return rows;

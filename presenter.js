@@ -43,14 +43,16 @@ function playerCards(stats, crowd) {
   for (const r of rows) byId[r.submissionId] = r;
   return stats.leaderboard.map(p => {
     const raw = byId[p.submissionId];
+    const subtotals = MATCHUPS.map(m => (p.perMatchup[m.id] ? p.perMatchup[m.id].total : 0));
     return `<div class="player">
       <h3><span>${p.rank}. ${esc(p.participant)}</span><span class="pts">${p.total} pts</span></h3>
+      <p class="note">Matchups ${subtotals.join(' + ')} = <strong>${p.total}</strong></p>
       ${MATCHUPS.map(m => {
         const s = p.perMatchup[m.id];
         const lines = answerRows(m, raw && raw.answers && raw.answers[m.id], crowd[m.id], s, CATEGORIES);
-        return `<h4>${esc(m.a.name)} v ${esc(m.b.name)} <span class="pts">${s ? s.total : 0}</span></h4>
-          <table><tr><th>Question</th><th>Player said</th><th>Room said</th><th>Points</th></tr>
-          ${lines.map(l => `<tr><td>${esc(l.question)}</td><td>${esc(l.yours)}</td><td>${esc(l.room)}</td><td class="pts">${l.points}</td></tr>`).join('')}
+        return `<h4>${esc(m.a.name)} v ${esc(m.b.name)} <span class="pts">${lines.map(l => l.points).join(' + ')} = ${s ? s.total : 0}</span></h4>
+          <table><tr><th>Question</th><th>Player said</th><th>Room said</th><th>Points</th><th>Why</th></tr>
+          ${lines.map(l => `<tr><td>${esc(l.question)}</td><td>${esc(l.yours)}</td><td>${esc(l.room)}</td><td class="pts">${l.points}</td><td>${esc(l.why)}</td></tr>`).join('')}
           </table>`;
       }).join('')}
     </div>`;
@@ -114,8 +116,11 @@ async function refresh() {
            <td>${c.overallShare}%</td><td>${c.categoriesWon} of ${c.categoriesTotal}</td></tr>`).join('')}
       </table>
 
-      <h2>Every player's answers</h2>
-      <p class="note">Ranked as above. "Player said" is who they predicted the room would pick and the share they gave; their own vote is in brackets.</p>
+      <h2>Every player's answers, and how the points add up</h2>
+      <p class="note">Ranked as above. "Player said" is who they predicted the room would pick and the share they gave; their own vote is in brackets.
+        The rules: right overall winner +2. Each category: the room's share for that contestant falls in one of five bands
+        (50–59, 60–69, 70–79, 80–89, 90–100); same band as the player's number +1, and the exact number +5 on top.
+        A share below 51, a tied room, or a contestant nobody picked scores 0. Most a matchup can give is 26.</p>
       ${playerCards(stats, crowd)}
 
       ${surveySection()}
