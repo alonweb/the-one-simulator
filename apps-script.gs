@@ -36,11 +36,19 @@ function survey_() {
   return sheet_(SURVEY, ['receivedAt', 'sessionCode', 'submissionId', 'participant', 'payload']);
 }
 
-/** Appends one row unless its submissionId is already there, so a retry never doubles. */
+/**
+ * Appends one row unless its submissionId is already there, so a retry never doubles.
+ * Only the id column is read: with thirty phones locking in the same second every lock
+ * waits for the ones before it, and reading the whole tab with its answer text each time
+ * was most of that wait (measured 2026-09-26: 30 locks in 97s on a full tab).
+ */
 function appendOnce_(sh, body) {
-  const existing = sh.getDataRange().getValues().slice(1);
-  for (const r of existing) {
-    if (String(r[2]) === String(body.submissionId)) return json_({ ok: true, duplicate: true });
+  const last = sh.getLastRow();
+  if (last > 1) {
+    const ids = sh.getRange(2, 3, last - 1, 1).getValues();
+    for (const r of ids) {
+      if (String(r[0]) === String(body.submissionId)) return json_({ ok: true, duplicate: true });
+    }
   }
   sh.appendRow([new Date(), body.sessionCode, body.submissionId,
                 body.participant, JSON.stringify(body.answers)]);

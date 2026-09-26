@@ -38,6 +38,11 @@ Spec and plan live in the HumanPatterns project under
 4. **Verify it** with the commands in `apps-script.test.md`.
 5. **Rehearse.** `ENDPOINT="…/exec" CODE=REHEARSAL node rehearse.mjs`, then open
    `presenter.html?code=REHEARSAL`, enter the key, and check the leaderboard adds up.
+6. **Stress it.** `N=30 KEY=<presenter key> node load.mjs` fires 30 locks in the same
+   instant, then 30 surveys, and reads the sheet back to prove every one landed once.
+   Rows are stamped LOADTEST; reset the sheet afterwards. Google runs about 30 requests
+   at once per script, so with a bigger room let people lock as they finish rather than
+   on a count of three.
    Delete the `REHEARSAL` rows from the sheet afterwards.
 6. **Run the tests.** `node --test` from this directory.
 
