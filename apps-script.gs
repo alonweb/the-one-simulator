@@ -37,15 +37,28 @@ function survey_() {
 }
 
 /**
- * Appends one row. No lock and no duplicate check here: with forty phones locking in the
- * same second, a queue made the last one wait 49s (measured 2026-09-26). appendRow is
- * safe to call in parallel, and every row carries a submissionId, so a retry that lands
- * twice is folded into one when the rows are read back (rowsOf_ below).
+ * Appends one row, safely under load.
+ *
+ * SpreadsheetApp.appendRow is read-then-write: forty phones locking in the same second
+ * overwrote each other and 8 of 40 rows were lost (measured 2026-09-26). A script lock
+ * prevents that but queues everyone (49s for the last of forty). The Sheets API append
+ * is applied on Google's side, one at a time, without the queue on ours: enable it once
+ * in the editor under Services -> Google Sheets API -> Add. Without it, this falls back
+ * to the lock: slow, never lossy. Every row carries a submissionId, so a retry that
+ * lands twice is folded into one when the rows are read back (rowsOf_ below).
  */
 function append_(sh, body) {
-  sh.appendRow([new Date(), body.sessionCode, body.submissionId,
-                body.participant, JSON.stringify(body.answers)]);
-  return json_({ ok: true, duplicate: false });
+  const row = [new Date().toISOString(), body.sessionCode, body.submissionId,
+               body.participant, JSON.stringify(body.answers)];
+  if (typeof Sheets !== 'undefined' && Sheets.Spreadsheets && Sheets.Spreadsheets.Values) {
+    Sheets.Spreadsheets.Values.append({ values: [row] }, ss_().getId(), sh.getName() + '!A:E',
+      { valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS' });
+    return json_({ ok: true, duplicate: false, via: 'api' });
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(120000);
+  try { sh.appendRow(row); } finally { lock.releaseLock(); }
+  return json_({ ok: true, duplicate: false, via: 'lock' });
 }
 
 /** Every row in the tab, or only one session's when a code is given; one per submissionId. */

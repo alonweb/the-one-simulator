@@ -38,7 +38,7 @@ async function wave(label, fn) {
   const results = await Promise.all(Array.from({ length: N }, (_, i) => {
     const n = i + 1; let attempts = 0; const started = Date.now();
     return fn(n, () => { attempts++; })
-      .then(r => ({ n, ok: true, duplicate: !!r.duplicate, attempts, ms: Date.now() - started }))
+      .then(r => ({ n, ok: true, duplicate: !!r.duplicate, via: r.via || '?', attempts, ms: Date.now() - started }))
       .catch(err => ({ n, ok: false, attempts, ms: Date.now() - started, error: err.message }));
   }));
   const ok = results.filter(r => r.ok);
@@ -46,7 +46,8 @@ async function wave(label, fn) {
   console.log(`${label}: ${ok.length}/${N} stored in ${((Date.now() - t0) / 1000).toFixed(1)}s` +
     ` · fastest ${(ms[0] / 1000).toFixed(1)}s · median ${(ms[Math.floor(N / 2)] / 1000).toFixed(1)}s · slowest ${(ms[N - 1] / 1000).toFixed(1)}s` +
     ` · needed a retry: ${results.filter(r => r.attempts > 1).length}` +
-    ` · max attempts ${Math.max(...results.map(r => r.attempts))}`);
+    ` · max attempts ${Math.max(...results.map(r => r.attempts))}` +
+    ` · written via ${[...new Set(ok.map(r => r.via))].join('/')}`);
   for (const r of results.filter(r => !r.ok)) console.log(`  FAILED ${label} ${r.n}: ${r.error}`);
   return results;
 }
@@ -61,7 +62,8 @@ if (KEY) {
   const mine = rows.filter(r => String(r.submissionId).startsWith(`load-${run}-`));
   const ids = new Set(mine.map(r => r.submissionId));
   const srows = (await fetchSurvey(CODE, KEY)).filter(r => String(r.submissionId).startsWith(`loadsrv-${run}-`));
-  console.log(`sheet check: ${ids.size} distinct locks of ${N} read back (repeats are folded on read) · ${srows.length} surveys of ${N}`);
+  console.log(`sheet check: ${ids.size} distinct locks of ${N} read back (repeats are folded on read) · ${srows.length} surveys of ${N}` +
+    (ids.size < N || srows.length < N ? '  <-- ROWS LOST, do not run a session on this server' : '  <-- nothing lost'));
   process.exit(ids.size === N && mine.length === N && srows.length === N ? 0 : 1);
 } else {
   console.log('no KEY given, so the sheet was not read back');

@@ -33,16 +33,20 @@ Spec and plan live in the HumanPatterns project under
    Until it is set the server refuses to close a round or show the statistics page at
    all — which is the intended failure, not a fault.
 3. **Deploy the server.** Paste `apps-script.gs` into the Apps Script editor bound to the
-   session spreadsheet, then **Deploy → Manage deployments → edit → Version: New version → Deploy**.
+   session spreadsheet. In the left column, **Services → + → Google Sheets API → Add**:
+   the script appends through that API because the plain append overwrote rows under
+   load (8 of 40 lost, 2026-09-26); without it the script falls back to a slow queue.
+   Then **Deploy → Manage deployments → edit → Version: New version → Deploy**.
    Saving without a new version leaves the old code serving. This catches everyone.
 4. **Verify it** with the commands in `apps-script.test.md`.
 5. **Rehearse.** `ENDPOINT="…/exec" CODE=REHEARSAL node rehearse.mjs`, then open
    `presenter.html?code=REHEARSAL`, enter the key, and check the leaderboard adds up.
 6. **Stress it.** `N=30 KEY=<presenter key> node load.mjs` fires 30 locks in the same
    instant, then 30 surveys, and reads the sheet back to prove every one landed once.
-   Rows are stamped LOADTEST; reset the sheet afterwards. Writes run in parallel and a
-   repeat of the same submissionId is folded to one row on read. Google refuses requests
-   above about 30 at once with an error page, which the phone retries by itself.
+   Rows are stamped LOADTEST; reset the sheet afterwards. The last line says whether
+   anything was lost and which write path served (`api` is the fast one). A repeat of
+   the same submissionId is folded to one row on read. Google refuses requests above
+   about 30 at once with an error page, which the phone retries by itself.
    Delete the `REHEARSAL` rows from the sheet afterwards.
 6. **Run the tests.** `node --test` from this directory.
 
