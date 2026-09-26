@@ -44,8 +44,8 @@ function playerCards(stats, crowd) {
   return stats.leaderboard.map(p => {
     const raw = byId[p.submissionId];
     const subtotals = MATCHUPS.map(m => (p.perMatchup[m.id] ? p.perMatchup[m.id].total : 0));
-    return `<div class="player">
-      <h3><span>${p.rank}. ${esc(p.participant)}</span><span class="pts">${p.total} pts</span></h3>
+    return `<div class="player" id="player-${esc(p.submissionId)}">
+      <h3><span>${p.rank}. ${esc(p.participant)}</span><span class="pts">${p.total} pts <a href="#top" class="up">top</a></span></h3>
       <p class="note">Matchups ${subtotals.join(' + ')} = <strong>${p.total}</strong></p>
       ${MATCHUPS.map(m => {
         const s = p.perMatchup[m.id];
@@ -99,8 +99,9 @@ async function refresh() {
       ${warning}${header}
       <h2>The prediction — who read the room best</h2>
       <table><tr><th>#</th><th>Name</th><th>Points</th></tr>
-        ${stats.leaderboard.map(r => `<tr><td>${r.rank}</td><td>${esc(r.participant)}</td><td>${r.total}</td></tr>`).join('')}
+        ${stats.leaderboard.map(r => `<tr><td>${r.rank}</td><td><a href="#player-${esc(r.submissionId)}">${esc(r.participant)}</a></td><td>${r.total}</td></tr>`).join('')}
       </table>
+      <p class="note">Tap a name to jump to that player's answers and points.</p>
       <p>Exact category hits: ${(stats.exactRate * 100).toFixed(1)}%.
          Average error predicting the room: ${stats.meanAbsoluteError.toFixed(1)} points.
          ${stats.ties.length ? 'Tied matchups: ' + stats.ties.join(', ') : 'No ties.'}</p>
