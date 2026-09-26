@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { crowdResult, leaderboard, sessionStats } from './stats.js';
+import { crowdResult, leaderboard, sessionStats, contestantStanding } from './stats.js';
 
 const rows = (votes) => votes.map((v, i) => ({
   submissionId: 's' + i,
@@ -72,4 +72,20 @@ test('session stats report how often the room was exactly predicted', () => {
   assert.equal(s.participants, 2);
   assert.ok(s.exactRate >= 0 && s.exactRate <= 1);
   assert.ok('meanAbsoluteError' in s);
+});
+
+test('contestantStanding carries each category share, the opponent share and who won it', () => {
+  const M = [{ id: 'm1', a: { id: 'c1', name: 'Ana', photo: 'photos/c1.jpg' }, b: { id: 'c2', name: 'Camila', photo: 'photos/c2.jpg' } }];
+  const C = [{ key: 'smile' }, { key: 'style' }];
+  const rows = [
+    { submissionId: 'a', answers: { m1: { overall: { vote: 'c1' }, categories: { smile: { vote: 'c1' }, style: { vote: 'c2' } } } } },
+    { submissionId: 'b', answers: { m1: { overall: { vote: 'c1' }, categories: { smile: { vote: 'c1' }, style: { vote: 'c1' } } } } },
+    { submissionId: 'c', answers: { m1: { overall: { vote: 'c2' }, categories: { smile: { vote: 'c2' }, style: { vote: 'c1' } } } } }
+  ];
+  const ana = contestantStanding(rows, M, C).find(x => x.id === 'c1');
+  assert.equal(ana.photo, 'photos/c1.jpg');
+  assert.equal(ana.opponentPhoto, 'photos/c2.jpg');
+  assert.deepEqual(ana.byCategory.smile, { share: 67, opponentShare: 33, won: true, tied: false });
+  assert.deepEqual(ana.byCategory.style, { share: 67, opponentShare: 33, won: true, tied: false });
+  assert.equal(ana.categoriesWon, 2);
 });

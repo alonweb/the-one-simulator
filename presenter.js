@@ -50,7 +50,7 @@ function playerCards(stats, crowd) {
       ${MATCHUPS.map(m => {
         const s = p.perMatchup[m.id];
         const lines = answerRows(m, raw && raw.answers && raw.answers[m.id], crowd[m.id], s, CATEGORIES);
-        return `<h4>${esc(m.a.name)} v ${esc(m.b.name)} <span class="pts">${lines.map(l => l.points).join(' + ')} = ${s ? s.total : 0}</span></h4>
+        return `<h4><img class="thumb" src="${esc(m.a.photo)}" alt="">${esc(m.a.name)} v <img class="thumb" src="${esc(m.b.photo)}" alt="">${esc(m.b.name)} <span class="pts">${lines.map(l => l.points).join(' + ')} = ${s ? s.total : 0}</span></h4>
           <table><tr><th>Question</th><th>Player said</th><th>Room said</th><th>Points</th><th>Why</th></tr>
           ${lines.map(l => `<tr><td>${esc(l.question)}</td><td>${esc(l.yours)}</td><td>${esc(l.room)}</td><td class="pts">${l.points}</td><td>${esc(l.why)}</td></tr>`).join('')}
           </table>`;
@@ -110,11 +110,19 @@ async function refresh() {
         : 'no data yet'}.</p>
 
       <h2>The contest — how the contestants did</h2>
-      <table><tr><th>Contestant</th><th>Against</th><th>Result</th><th>Crowd share</th><th>Categories won</th></tr>
+      <p class="note">This is the room's own vote, not the predictions. <strong>Crowd share</strong> is the share of the room
+        that picked her as the one in her matchup; above 50% she won it. Each <strong>category</strong> shows the share of the room
+        that picked her for that question, and a tick where hers was the larger share. <strong>Won</strong> counts those ticks.</p>
+      <table class="contest"><tr><th>Contestant</th><th>Against</th><th>Result</th><th>Crowd share</th>
+        ${CATEGORIES.map(cat => `<th>${esc(cat.label)}</th>`).join('')}<th>Won</th></tr>
         ${contestantStanding(rows, MATCHUPS, CATEGORIES).map(c =>
-          `<tr><td><strong>${esc(c.name)}</strong></td><td>${esc(c.opponent)}</td>
+          `<tr><td><img class="thumb" src="${esc(c.photo)}" alt=""><strong>${esc(c.name)}</strong></td>
+           <td><img class="thumb" src="${esc(c.opponentPhoto)}" alt="">${esc(c.opponent)}</td>
            <td>${c.tied ? 'tied' : c.wonOverall ? 'won' : 'lost'}</td>
-           <td>${c.overallShare}%</td><td>${c.categoriesWon} of ${c.categoriesTotal}</td></tr>`).join('')}
+           <td>${c.overallShare}%</td>
+           ${CATEGORIES.map(cat => { const b = c.byCategory[cat.key] || {};
+             return `<td class="${b.won ? 'won' : ''}">${b.share}%${b.won ? ' ✓' : b.tied ? ' =' : ''}</td>`; }).join('')}
+           <td><strong>${c.categoriesWon}</strong> of ${c.categoriesTotal}</td></tr>`).join('')}
       </table>
 
       <h2>Every player's answers, and how the points add up</h2>
@@ -129,7 +137,7 @@ async function refresh() {
       <details><summary>What the room said, matchup by matchup</summary>
       ${MATCHUPS.map(m => {
         const c = crowd[m.id];
-        return `<h3>${esc(m.a.name)} v ${esc(m.b.name)}</h3>
+        return `<h3><img class="thumb" src="${esc(m.a.photo)}" alt="">${esc(m.a.name)} v <img class="thumb" src="${esc(m.b.photo)}" alt="">${esc(m.b.name)}</h3>
           <table>
             <tr><th>Question</th><th>How the room voted</th></tr>
             <tr><td>Who is the one</td><td>${formatCounts(c.overallCounts, m)}${

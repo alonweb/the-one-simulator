@@ -130,17 +130,22 @@ export function contestantStanding(rows, matchups, categories) {
     for (const side of [m.a, m.b]) {
       const votes = crowd.overallCounts[side.id] || 0;
       let categoriesWon = 0;
+      const byCategory = {};
       for (const key of keys) {
         const shares = crowd.categories[key] || {};
         const mine = shares[side.id] || 0;
         const theirs = Object.entries(shares)
           .filter(([id]) => id !== side.id)
           .reduce((mx, [, v]) => Math.max(mx, v), 0);
-        if (mine > theirs) categoriesWon++;
+        const won = mine > theirs;
+        if (won) categoriesWon++;
+        byCategory[key] = { share: mine, opponentShare: theirs, won, tied: mine === theirs && mine > 0 };
       }
       out.push({
-        id: side.id, name: side.name, matchupId: m.id,
+        id: side.id, name: side.name, photo: side.photo, matchupId: m.id,
         opponent: side.id === m.a.id ? m.b.name : m.a.name,
+        opponentPhoto: side.id === m.a.id ? m.b.photo : m.a.photo,
+        byCategory,
         votes, overallShare: total ? Math.round((votes * 100) / total) : 0,
         wonOverall: crowd.overallWinner === side.id,
         tied: crowd.overallTied, categoriesWon, categoriesTotal: keys.length
