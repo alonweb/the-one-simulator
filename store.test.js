@@ -51,3 +51,13 @@ test('a reset carries the key and nothing else, and refuses to leave without one
   assert.deepEqual(buildResetWrite(' k1 '), { kind: 'reset', key: 'k1' });
   assert.throws(() => buildResetWrite(''), /presenter key/);
 });
+
+test('parseRows keeps the first row per submissionId, so a retried lock counts once', () => {
+  const rows = parseRows({ ok: true, rows: [
+    { submissionId: 's1', participant: 'Ana', answers: { m1: {} } },
+    { submissionId: 's1', participant: 'Ana', answers: { m1: { late: true } } },
+    { submissionId: 's2', participant: 'Bo', answers: { m1: {} } }
+  ] });
+  assert.deepEqual(rows.map(r => r.submissionId), ['s1', 's2']);
+  assert.deepEqual(rows[0].answers, { m1: {} });
+});

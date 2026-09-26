@@ -61,7 +61,7 @@ if (KEY) {
   const mine = rows.filter(r => String(r.submissionId).startsWith(`load-${run}-`));
   const ids = new Set(mine.map(r => r.submissionId));
   const srows = (await fetchSurvey(CODE, KEY)).filter(r => String(r.submissionId).startsWith(`loadsrv-${run}-`));
-  console.log(`sheet check: ${ids.size} distinct locks of ${N} (${mine.length} rows, so ${mine.length - ids.size} duplicates) · ${srows.length} surveys of ${N}`);
+  console.log(`sheet check: ${ids.size} distinct locks of ${N} read back (repeats are folded on read) · ${srows.length} surveys of ${N}`);
   process.exit(ids.size === N && mine.length === N && srows.length === N ? 0 : 1);
 } else {
   console.log('no KEY given, so the sheet was not read back');

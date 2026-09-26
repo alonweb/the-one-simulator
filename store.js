@@ -13,9 +13,17 @@ export function buildSurveySubmission({ sessionCode, participant, answers, submi
   return { kind: 'survey', sessionCode, participant, answers, submissionId };
 }
 
+/** Well-formed rows, one per submissionId: the first wins, so a retried lock counts once. */
 export function parseRows(response) {
   if (!response || !response.ok || !Array.isArray(response.rows)) return [];
-  return response.rows.filter(r => r && r.answers && typeof r.answers === 'object');
+  const seen = new Set();
+  return response.rows.filter(r => {
+    if (!r || !r.answers || typeof r.answers !== 'object') return false;
+    const id = String(r.submissionId);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 async function post(body) {
@@ -33,11 +41,10 @@ async function post(body) {
 /**
  * Sends one submission and keeps trying until it is durably stored.
  *
- * Measured against the live endpoint: twenty simultaneous locks queue behind the
- * server's script lock, seven of twenty came back as an HTML error page, and the
- * slowest took 22 seconds. Retrying is safe at any length because the submissionId
- * makes a repeat a no-op on the server, so patience costs nothing and impatience
- * loses a participant's whole set.
+ * The server writes in parallel and Google refuses requests above about thirty at
+ * once with an HTML error page, which reads here as retryable. Retrying is safe at any
+ * length because the submissionId folds a repeat into one row when the rows are read,
+ * so patience costs nothing and impatience loses a participant's whole set.
  */
 export async function submit(payload, opts = {}) {
   return send(buildSubmission(payload), opts);

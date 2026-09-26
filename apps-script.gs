@@ -37,30 +37,31 @@ function survey_() {
 }
 
 /**
- * Appends one row unless its submissionId is already there, so a retry never doubles.
- * Only the id column is read: with thirty phones locking in the same second every lock
- * waits for the ones before it, and reading the whole tab with its answer text each time
- * was most of that wait (measured 2026-09-26: 30 locks in 97s on a full tab).
+ * Appends one row. No lock and no duplicate check here: with forty phones locking in the
+ * same second, a queue made the last one wait 49s (measured 2026-09-26). appendRow is
+ * safe to call in parallel, and every row carries a submissionId, so a retry that lands
+ * twice is folded into one when the rows are read back (rowsOf_ below).
  */
-function appendOnce_(sh, body) {
-  const last = sh.getLastRow();
-  if (last > 1) {
-    const ids = sh.getRange(2, 3, last - 1, 1).getValues();
-    for (const r of ids) {
-      if (String(r[0]) === String(body.submissionId)) return json_({ ok: true, duplicate: true });
-    }
-  }
+function append_(sh, body) {
   sh.appendRow([new Date(), body.sessionCode, body.submissionId,
                 body.participant, JSON.stringify(body.answers)]);
   return json_({ ok: true, duplicate: false });
 }
 
-/** Every row in the tab, or only one session's when a code is given. */
+/** Every row in the tab, or only one session's when a code is given; one per submissionId. */
 function rowsOf_(sh, code) {
-  return sh.getDataRange().getValues().slice(1)
-    .filter(r => !String(code || '').trim() || String(r[1]) === String(code))
-    .filter(r => r[4] !== '' && r[4] != null)
-    .map(r => ({ receivedAt: r[0], submissionId: r[2], participant: r[3], answers: JSON.parse(r[4] || 'null') }));
+  const seen = {};
+  const out = [];
+  const rows = sh.getDataRange().getValues().slice(1);
+  for (const r of rows) {
+    if (String(code || '').trim() && String(r[1]) !== String(code)) continue;
+    if (r[4] === '' || r[4] == null) continue;
+    const id = String(r[2]);
+    if (seen[id]) continue;
+    seen[id] = true;
+    out.push({ receivedAt: r[0], submissionId: r[2], participant: r[3], answers: JSON.parse(r[4] || 'null') });
+  }
+  return out;
 }
 
 function json_(obj) {
@@ -98,21 +99,11 @@ function wipe_(sh) {
 }
 
 function doPost(e) {
-  // Twenty simultaneous locks queue here. The wait must be inside the try, or a
-  // timeout escapes as an HTML error page instead of JSON the client can act on.
-  const lock = LockService.getScriptLock();
   try {
-    try {
-      lock.waitLock(120000);
-    } catch (busy) {
-      return json_({ ok: false, error: 'busy', retryable: true });
-    }
     const body = JSON.parse(e.postData.contents);
     // Closing a round and wiping the sheet cannot be undone, and the endpoint URL is in
     // every participant's browser, so both need the key. Fail closed: with no key
     // configured, nobody can do either, including the presenter.
-    // Wiping the sheet is how the presenter starts clean before the real session. It
-    // empties the three tabs below their headers and cannot be undone: export first.
     if (body.kind === 'reset') {
       const refused = keyCheck_(body.key);
       if (refused) return json_({ ok: false, error: refused });
@@ -134,19 +125,22 @@ function doPost(e) {
     if (!String(body.sessionCode || '').trim()) {
       return json_({ ok: false, error: 'a session code is needed' });
     }
+    if (!String(body.submissionId || '').trim()) {
+      return json_({ ok: false, error: 'a submissionId is needed' });
+    }
     // the survey comes after locking, and often after the presenter has closed the
     // round, so it is accepted whatever the state
-    if (body.kind === 'survey') return appendOnce_(survey_(), body);
+    if (body.kind === 'survey') return append_(survey_(), body);
     // a round the presenter has closed must not accept more submissions, or a late
     // lock joins the crowd result after the leaderboard has been announced
     if (readState_(body.sessionCode) !== 'open') {
       return json_({ ok: false, error: 'the round is closed' });
     }
-    return appendOnce_(responses_(), body);
+    return append_(responses_(), body);
   } catch (err) {
-    return json_({ ok: false, error: String(err) });
-  } finally {
-    try { lock.releaseLock(); } catch (e) {}
+    // Google answers "too many simultaneous invocations" above ~30 at once; the phone
+    // treats any non-JSON or ok:false reply as retryable and tries again shortly
+    return json_({ ok: false, error: String(err), retryable: true });
   }
 }
 

@@ -11,9 +11,9 @@ URL="https://script.google.com/macros/s/AKfycbzuWOwMRpYABdBa3q3MYHlR_jQaiXm5j7EQ
 curl -sS -L --data '{"kind":"submission","sessionCode":"T1","submissionId":"s-1","participant":"Ana","answers":{"m1":{}}}' -H 'Content-Type: text/plain' "$URL"
 # expect {"ok":true,"duplicate":false}
 
-# 2. the same submissionId is rejected as a duplicate, no second row
+# 2. (2026-09-26) the same submissionId may land twice in the tab, but reads fold it to one
 curl -sS -L --data '{"kind":"submission","sessionCode":"T1","submissionId":"s-1","participant":"Ana","answers":{"m1":{}}}' -H 'Content-Type: text/plain' "$URL"
-# expect {"ok":true,"duplicate":true}
+# expect {"ok":true,"duplicate":false}; step 3 must still return exactly one row
 
 # 3. rows are filtered by session code
 curl -sS -L "$URL?what=rows&code=T1"

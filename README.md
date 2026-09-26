@@ -40,9 +40,9 @@ Spec and plan live in the HumanPatterns project under
    `presenter.html?code=REHEARSAL`, enter the key, and check the leaderboard adds up.
 6. **Stress it.** `N=30 KEY=<presenter key> node load.mjs` fires 30 locks in the same
    instant, then 30 surveys, and reads the sheet back to prove every one landed once.
-   Rows are stamped LOADTEST; reset the sheet afterwards. Google runs about 30 requests
-   at once per script, so with a bigger room let people lock as they finish rather than
-   on a count of three.
+   Rows are stamped LOADTEST; reset the sheet afterwards. Writes run in parallel and a
+   repeat of the same submissionId is folded to one row on read. Google refuses requests
+   above about 30 at once with an error page, which the phone retries by itself.
    Delete the `REHEARSAL` rows from the sheet afterwards.
 6. **Run the tests.** `node --test` from this directory.
 
