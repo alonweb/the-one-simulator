@@ -3,6 +3,9 @@
 // submit path (same retries, same back-off), and checks afterwards that every one landed.
 //
 //   N=30 KEY=<presenter key> node load.mjs
+//   PAUSE=65 waits that many seconds between the lock wave and the survey wave, as a
+//   room does: Google allows about 60 sheet writes a minute for one account, and two
+//   waves of 40 inside one minute hit that cap (retried, nothing lost, but slow).
 //
 // Rows are stamped LOADTEST so they are easy to tell apart. Reset the sheet afterwards.
 import { MATCHUPS, CATEGORIES, SURVEY } from './config.js';
@@ -11,6 +14,7 @@ import { submit, submitSurvey, fetchRows, fetchSurvey } from './store.js';
 const N = Number(process.env.N || 30);
 const KEY = process.env.KEY || '';
 const CODE = process.env.CODE || 'LOADTEST';
+const PAUSE = Number(process.env.PAUSE || 0);
 const run = Date.now();
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
@@ -54,6 +58,7 @@ async function wave(label, fn) {
 
 const locks = await wave('locks', (n, onAttempt) =>
   submit({ sessionCode: CODE, participant: `Load ${n}`, answers: answers(), submissionId: `load-${run}-${n}` }, { onAttempt }));
+if (PAUSE) { console.log(`waiting ${PAUSE}s before the surveys, as a room would`); await new Promise(r => setTimeout(r, PAUSE * 1000)); }
 const surveys = await wave('surveys', (n, onAttempt) =>
   submitSurvey({ sessionCode: CODE, participant: `Load ${n}`, answers: survey(), submissionId: `loadsrv-${run}-${n}` }, { onAttempt }));
 
