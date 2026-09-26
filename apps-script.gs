@@ -100,9 +100,9 @@ function doPost(e) {
       return json_({ ok: false, error: 'busy', retryable: true });
     }
     const body = JSON.parse(e.postData.contents);
-    // Closing a round and revealing the results are the two irreversible acts in a
-    // session, and the endpoint URL is in every participant's browser. Fail closed:
-    // with no key configured, nobody can do either, including the presenter.
+    // Closing a round and wiping the sheet cannot be undone, and the endpoint URL is in
+    // every participant's browser, so both need the key. Fail closed: with no key
+    // configured, nobody can do either, including the presenter.
     // Wiping the sheet is how the presenter starts clean before the real session. It
     // empties the three tabs below their headers and cannot be undone: export first.
     if (body.kind === 'reset') {
@@ -145,8 +145,6 @@ function doPost(e) {
 function doGet(e) {
   const code = (e && e.parameter && e.parameter.code) || '';
   const what = (e && e.parameter && e.parameter.what) || 'rows';
-  // A read without a session code used to return every row of every session. One is
-  // always available to anyone entitled to read, so requiring it costs nothing.
   if (what === 'state') {
     if (!String(code).trim()) return json_({ ok: false, error: 'a session code is needed' });
     return json_({ ok: true, state: readState_(code) });
