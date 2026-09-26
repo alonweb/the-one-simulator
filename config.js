@@ -34,17 +34,33 @@ export const MATCHUPS = [
 // Change it before a second focus group so the two do not mix. Nobody types it.
 export const SESSION_LABEL = 'LIVE1';
 
-// The survey every player answers after locking. Edit freely before the day.
+// The survey. Players reach it after locking, or from the menu at any time. From Mati's
+// focus-group brief (2026-09-26): record choices and behaviour, not only "yes I would pay".
 // type: 'scale' (min..max), 'choice' (one of options), or 'text'. required defaults to true.
+// `short` is the column heading on the presenter page. Edit freely before the day.
 export const SURVEY = [
-  { key: 'clear',   type: 'scale',  min: 1, max: 5, label: 'How clear was what you had to do?',
-    low: 'Confusing', high: 'Very clear' },
-  { key: 'fun',     type: 'scale',  min: 1, max: 5, label: 'How much did you enjoy predicting the room?',
-    low: 'Not at all', high: 'A lot' },
-  { key: 'hardest', type: 'choice', label: 'Which question was hardest to predict?',
-    options: ['Who is the one', 'Best smile', 'Style', 'Body', 'Take to Mama'] },
-  { key: 'daily',   type: 'choice', label: 'Would you play a round like this every day for a season?',
-    options: ['Yes', 'Maybe', 'No'] },
-  { key: 'back',    type: 'text',   label: 'What would make you come back tomorrow?' },
-  { key: 'other',   type: 'text',   label: 'Anything else?', required: false }
+  { key: 'challenge', type: 'text', short: 'Challenge whom',
+    label: 'Would you challenge another fan on a result? Who, and why?' },
+  { key: 'return', type: 'choice', short: 'Come back',
+    label: 'Would you come back to see who won the challenge?', options: ['Yes', 'Maybe', 'No'] },
+  { key: 'choose', type: 'choice', short: 'Would choose',
+    label: 'Now that you have seen the screens, what would you choose?',
+    options: ['A free matchup', 'A matchup with stars I bought', 'A reply from the contestant', 'Something in the results', 'Nothing'] },
+  { key: 'chooseWhy', type: 'text', short: 'Why', label: 'Why that one?' },
+  { key: 'maxPrice', type: 'text', short: 'Max price',
+    label: 'What is the most you would pay for a first pack of stars?' },
+  { key: 'packSize', type: 'text', short: 'Pack size',
+    label: 'What pack size feels like fun, without putting you off?' },
+  { key: 'buyAgain', type: 'choice', short: 'Buy after loss',
+    label: 'Would you buy again after losing?', options: ['Yes', 'Maybe', 'No'] },
+  { key: 'firstUse', type: 'choice', short: 'First use of stars',
+    label: 'If you won stars, what would you do first?',
+    options: ['Play again', 'Get a personal reply from the contestant', 'Be seen by the crowd', 'Save them for a prize'] },
+  { key: 'prize', type: 'text', short: 'Prize wanted', label: 'Which prize would really interest you?' },
+  { key: 'trust', type: 'choice', short: 'Trust hurt',
+    label: 'You vote, and you also play matchups on the result. Does that hurt your trust in the game?',
+    options: ['Yes', 'A little', 'No'] },
+  { key: 'trustFix', type: 'text', short: 'What builds trust',
+    label: 'What would make you believe the votes are counted properly?' },
+  { key: 'other', type: 'text', short: 'Other', label: 'Anything else?', required: false }
 ];

@@ -24,7 +24,7 @@ export function isSurveyComplete(answers, questions) {
 export function surveyTable(rows, questions) {
   const qs = questions || [];
   return {
-    header: qs.map(q => q.label),
+    header: qs.map(q => q.short || q.label),
     rows: (rows || [])
       .filter(r => r && r.answers && typeof r.answers === 'object')
       .map(r => ({

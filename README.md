@@ -51,7 +51,8 @@ To look at an older session, open `presenter.html?code=DEMO`.
 ## The survey
 
 After locking, a player answers the questions in `SURVEY` (`config.js`), then sees a
-thank-you screen. Players never see results. Answers land in a `survey` tab the script
+thank-you screen. The menu also offers **Answer the survey** at any point; the game
+resumes where it was, and a survey is sent once per device. Players never see results. Answers land in a `survey` tab the script
 creates on first use, and appear in the presenter page under "The survey". Three question
 types: `scale` (min..max with end labels), `choice` (one of `options`), `text`.
 `required: false` makes a question optional.

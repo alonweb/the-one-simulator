@@ -40,3 +40,8 @@ test('surveyTable ignores rows without answers', () => {
   const t = surveyTable([{ participant: 'X', answers: null }, { participant: 'Y' }], Q);
   assert.deepEqual(t.rows, []);
 });
+
+test('surveyTable heads a column with the short name when the question has one', () => {
+  const t = surveyTable([], [{ key: 'a', label: 'A very long question indeed?', short: 'Long q', type: 'text' }, Q[0]]);
+  assert.deepEqual(t.header, ['Long q', 'How clear was it?']);
+});

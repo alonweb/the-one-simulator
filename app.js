@@ -54,6 +54,7 @@ function chrome() {
     </header>
     ${state.menu ? `<nav class="menu">
       <button id="mReview">Review my answers</button>
+      <button id="mSurvey" ${state.surveySent ? 'disabled' : ''}>${state.surveySent ? 'Survey sent' : 'Answer the survey'}</button>
       <button id="mClear">Clear this matchup</button>
       <button id="mOver">Start from the beginning</button>
     </nav>` : ''}`;
@@ -64,6 +65,9 @@ function wireChrome(m) {
   if (btn) btn.onclick = () => { state.menu = !state.menu; saveDraft(state); render(); };
   const review = document.getElementById('mReview');
   if (review) review.onclick = () => go('review');
+  // the survey can be answered at any point; it remembers where to come back to
+  const survey = document.getElementById('mSurvey');
+  if (survey && !state.surveySent) survey.onclick = () => { state.surveyReturn = state.screen; go('survey'); };
   const clear = document.getElementById('mClear');
   if (clear) clear.onclick = () => {
     if (!confirm(`Clear your answers for ${m.a.name} v ${m.b.name}? The other matchups are not touched.`)) return;
@@ -278,7 +282,8 @@ function renderReview() {
       await submit({ sessionCode: state.sessionCode, participant: state.participant,
                      answers: state.draft, submissionId: state.submissionId },
                     { onAttempt: (n) => { btn.textContent = n === 1 ? 'Submitting…' : `Still submitting… (try ${n})`; } });
-      go('survey');
+      state.surveyReturn = null;
+      go(state.surveySent ? 'done' : 'survey');
     } catch (err) {
       document.getElementById('lockErr').textContent =
         'Did not save. Tap to try again; it cannot double-count.';
@@ -307,13 +312,19 @@ function renderSurvey() {
     }
     return `<textarea class="text" data-q="${q.key}" rows="3" placeholder="${q.required === false ? 'Optional' : 'A few words'}">${esc(a[q.key] || '')}</textarea>`;
   };
+  const fromMenu = !!state.surveyReturn;
   el.innerHTML = `<header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
-    <div class="banner"><strong>Locked</strong>Your predictions are in. Last thing: a few questions.</div>
+    ${fromMenu
+      ? `<div class="banner"><strong>Survey</strong>A few questions from the team. Your matchup answers are kept.</div>`
+      : `<div class="banner"><strong>Locked</strong>Your predictions are in. Last thing: a few questions.</div>`}
     ${SURVEY.map((q, i) => `<div class="card survey">
       <h3>${i + 1}. ${esc(q.label)}${q.required === false ? ' <small>(optional)</small>' : ''}</h3>
       ${field(q)}</div>`).join('')}
     <p class="err" id="surveyErr"></p>
-    <button id="send" class="cta" ${complete ? '' : 'disabled'}>${complete ? 'Send my answers' : 'Answer everything first'}</button>`;
+    <button id="send" class="cta" ${complete ? '' : 'disabled'}>${complete ? 'Send my answers' : 'Answer everything first'}</button>
+    ${fromMenu ? `<div class="nav"><button id="surveyBack" class="ghost">Back to the game</button></div>` : ''}`;
+  const back = document.getElementById('surveyBack');
+  if (back) back.onclick = () => { const to = state.surveyReturn; state.surveyReturn = null; go(to); };
   el.querySelectorAll('button.pick').forEach(b => {
     b.onclick = () => {
       const q = SURVEY.find(x => x.key === b.dataset.q);
@@ -340,7 +351,9 @@ function renderSurvey() {
       await submitSurvey({ sessionCode: state.sessionCode, participant: state.participant,
                            answers: state.survey, submissionId: state.surveyId },
                          { onAttempt: (n) => { btn.textContent = n === 1 ? 'Sending…' : `Still sending… (try ${n})`; } });
-      go('done');
+      state.surveySent = true;
+      if (state.surveyReturn) { const to = state.surveyReturn; state.surveyReturn = null; go(to); }
+      else go('done');
     } catch (err) {
       document.getElementById('surveyErr').textContent = 'Did not save. Tap to try again; it cannot double-count.';
       btn.disabled = false; btn.textContent = 'Send my answers';
