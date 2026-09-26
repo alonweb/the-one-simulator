@@ -19,24 +19,28 @@
   th { background: var(--yellow); font-weight: 800; }
   tr:last-child td { border-bottom: 0; }
   .warn { font-weight: 800; background: var(--yellow); padding: 10px 16px; border-radius: 14px; }
+  .player { border: 2px solid var(--ink); border-radius: 22px; padding: 12px 18px; margin: 14px 0; }
+  .player h3 { margin: 0 0 6px; display: flex; justify-content: space-between; }
+  .player table { margin: 6px 0 10px; font-size: 14px; }
+  .player h4 { margin: 10px 0 2px; font-size: 15px; }
+  .pts { font-weight: 800; text-align: right; }
+  details summary { cursor: pointer; font-weight: 800; margin: 12px 0; }
 </style>
 </head>
 <body>
   <header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
   <p class="eyebrow">Presenter</p>
   <div class="bar">
-    <input id="code" placeholder="Session code">
     <input id="key" type="password" placeholder="Presenter key" autocomplete="off">
-    <button id="load" class="ghost">Load</button>
+    <button id="load" class="cta" style="margin-top:0">Load</button>
   </div>
-  <p class="note">The key is only needed to close the round or reveal the results, and it
-    stays on this device. Never give it to participants.</p>
+  <p class="note">The key opens this page and closes the round. It stays on this device.
+    Never give it to participants.</p>
   <div class="bar">
     <button id="close" class="ghost">Close the round</button>
-    <button id="reveal" class="cta" style="margin-top:0">Reveal results</button>
     <button id="export" class="ghost">Export raw answers</button>
   </div>
-  <div id="out"><p class="note">Enter the session code and press Load.</p></div>
+  <div id="out"><p class="note">Enter the presenter key and press Load.</p></div>
   <script type="module" src="presenter.js"></script>
 </body>
 </html>

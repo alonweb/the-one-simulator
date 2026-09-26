@@ -28,3 +28,23 @@ export const MATCHUPS = [
   { id: 'm4', a: { id: 'c7', name: 'Juliana', photo: 'photos/c7.jpg' }, b: { id: 'c8', name: 'Laura', photo: 'photos/c8.jpg' } },
   { id: 'm5', a: { id: 'c9', name: 'Luciana', photo: 'photos/c9.jpg' }, b: { id: 'c10', name: 'Manuela', photo: 'photos/c10.jpg' } }
 ];
+
+// Every row this build writes carries this label, so the presenter console shows this
+// session only and the build-time test sessions in the same sheet stay out of the way.
+// Change it before a second focus group so the two do not mix. Nobody types it.
+export const SESSION_LABEL = 'LIVE1';
+
+// The survey every player answers after locking. Edit freely before the day.
+// type: 'scale' (min..max), 'choice' (one of options), or 'text'. required defaults to true.
+export const SURVEY = [
+  { key: 'clear',   type: 'scale',  min: 1, max: 5, label: 'How clear was what you had to do?',
+    low: 'Confusing', high: 'Very clear' },
+  { key: 'fun',     type: 'scale',  min: 1, max: 5, label: 'How much did you enjoy predicting the room?',
+    low: 'Not at all', high: 'A lot' },
+  { key: 'hardest', type: 'choice', label: 'Which question was hardest to predict?',
+    options: ['Who is the one', 'Best smile', 'Style', 'Body', 'Take to Mama'] },
+  { key: 'daily',   type: 'choice', label: 'Would you play a round like this every day for a season?',
+    options: ['Yes', 'Maybe', 'No'] },
+  { key: 'back',    type: 'text',   label: 'What would make you come back tomorrow?' },
+  { key: 'other',   type: 'text',   label: 'Anything else?', required: false }
+];

@@ -8,10 +8,14 @@
  *   Project Settings -> Script properties -> Add script property
  *   Property: PRESENTER_KEY    Value: whatever the presenter will type
  * It is deliberately not in this file, because this file is published. Until it is set,
- * the server refuses to close a round or reveal results at all.
+ * the server refuses to close a round, and refuses to show the statistics at all.
+ *
+ * The key protects two things: closing the round (a write) and reading anyone's answers
+ * or survey (the presenter's statistics page). Submitting answers needs no key.
  */
 const RESPONSES = 'responses';
 const SESSION = 'session';
+const SURVEY = 'survey';
 
 function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
 
@@ -26,6 +30,27 @@ function responses_() {
 }
 
 function session_() { return sheet_(SESSION, ['sessionCode', 'state', 'updatedAt']); }
+
+function survey_() {
+  return sheet_(SURVEY, ['receivedAt', 'sessionCode', 'submissionId', 'participant', 'payload']);
+}
+
+/** Appends one row unless its submissionId is already there, so a retry never doubles. */
+function appendOnce_(sh, body) {
+  const existing = sh.getDataRange().getValues().slice(1);
+  for (const r of existing) {
+    if (String(r[2]) === String(body.submissionId)) return json_({ ok: true, duplicate: true });
+  }
+  sh.appendRow([new Date(), body.sessionCode, body.submissionId,
+                body.participant, JSON.stringify(body.answers)]);
+  return json_({ ok: true, duplicate: false });
+}
+
+function rowsOf_(sh, code) {
+  return sh.getDataRange().getValues().slice(1)
+    .filter(r => String(r[1]) === String(code))
+    .map(r => ({ receivedAt: r[0], submissionId: r[2], participant: r[3], answers: JSON.parse(r[4] || 'null') }));
+}
 
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
@@ -77,21 +102,18 @@ function doPost(e) {
       session_().appendRow([body.sessionCode, body.state, new Date()]);
       return json_({ ok: true, state: body.state });
     }
+    if (!String(body.sessionCode || '').trim()) {
+      return json_({ ok: false, error: 'a session code is needed' });
+    }
+    // the survey comes after locking, and often after the presenter has closed the
+    // round, so it is accepted whatever the state
+    if (body.kind === 'survey') return appendOnce_(survey_(), body);
     // a round the presenter has closed must not accept more submissions, or a late
     // lock joins the crowd result after the leaderboard has been announced
     if (readState_(body.sessionCode) !== 'open') {
       return json_({ ok: false, error: 'the round is closed' });
     }
-    const sh = responses_();
-    const existing = sh.getDataRange().getValues().slice(1);
-    for (const r of existing) {
-      if (String(r[2]) === String(body.submissionId)) {
-        return json_({ ok: true, duplicate: true });
-      }
-    }
-    sh.appendRow([new Date(), body.sessionCode, body.submissionId,
-                  body.participant, JSON.stringify(body.answers)]);
-    return json_({ ok: true, duplicate: false });
+    return appendOnce_(responses_(), body);
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   } finally {
@@ -106,8 +128,15 @@ function doGet(e) {
   // always available to anyone entitled to read, so requiring it costs nothing.
   if (!String(code).trim()) return json_({ ok: false, error: 'a session code is needed' });
   if (what === 'state') return json_({ ok: true, state: readState_(code) });
-  const rows = responses_().getDataRange().getValues().slice(1)
-    .filter(r => String(r[1]) === String(code))
-    .map(r => ({ receivedAt: r[0], submissionId: r[2], participant: r[3], answers: JSON.parse(r[4] || 'null') }));
-  return json_({ ok: true, rows: rows });
+  // Everything else is the statistics page: every player's answers and survey. The
+  // participant link is public, so only the presenter key opens it. Fail closed.
+  const expected = presenterKey_();
+  if (!expected) {
+    return json_({ ok: false, error: 'No presenter key is set on the server. ' +
+      'Project Settings -> Script properties -> PRESENTER_KEY.' });
+  }
+  const key = (e && e.parameter && e.parameter.key) || '';
+  if (String(key).trim() !== expected) return json_({ ok: false, error: 'wrong presenter key' });
+  if (what === 'survey') return json_({ ok: true, rows: rowsOf_(survey_(), code) });
+  return json_({ ok: true, rows: rowsOf_(responses_(), code) });
 }

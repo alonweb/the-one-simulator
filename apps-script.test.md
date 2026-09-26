@@ -27,9 +27,23 @@ curl -sS -L "$URL?what=state&code=T1"
 # 5. an unknown session reads as open
 curl -sS -L "$URL?what=state&code=NOPE"
 # expect {"ok":true,"state":"open"}
+
+# 6. (2026-09-26) rows need the presenter key now; KEY is what PRESENTER_KEY holds
+curl -sS -L "$URL?what=rows&code=T1"
+# expect {"ok":false,"error":"wrong presenter key"}
+curl -sS -L "$URL?what=rows&code=T1&key=$KEY"
+# expect the T1 row
+
+# 7. the survey is stored once, under its own id, even after the round is closed
+curl -sS -L --data '{"kind":"survey","sessionCode":"T1","submissionId":"srv-1","participant":"Ana","answers":{"clear":4,"back":"the photos"}}' -H 'Content-Type: text/plain' "$URL"
+# expect {"ok":true,"duplicate":false} and a new "survey" tab with one row
+curl -sS -L --data '{"kind":"survey","sessionCode":"T1","submissionId":"srv-1","participant":"Ana","answers":{"clear":4}}' -H 'Content-Type: text/plain' "$URL"
+# expect {"ok":true,"duplicate":true}
+curl -sS -L "$URL?what=survey&code=T1&key=$KEY"
+# expect exactly one row
 ```
 
-Delete the `T1` rows from both sheets afterwards.
+Delete the `T1` rows from all three sheets afterwards.
 
 ## Result
 

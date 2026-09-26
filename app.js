@@ -1,8 +1,8 @@
-import { MATCHUPS, CATEGORIES } from './config.js';
-import { submit, fetchState, fetchRows, normalizeCode } from './store.js';
+import { MATCHUPS, CATEGORIES, SURVEY, SESSION_LABEL } from './config.js';
+import { submit, submitSurvey } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { summariseMatchup } from './present-format.js';
-import { crowdResult, leaderboard, contestantStanding } from './stats.js';
+import { setSurveyAnswer, isSurveyComplete } from './survey.js';
 import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset,
          shapeOf, draftMatches, clearMatchup } from './draft.js';
 import { questionsOf, nextStop, prevStop, isQuestionAnswered, predictionPatch, sliderOf } from './flow.js';
@@ -17,15 +17,15 @@ if (wantsReset(location.search)) {
   location.replace(location.pathname);
 }
 
-const ordinal = (n) => n + (['th','st','nd','rd'][(n%100-n%10!=10)*(n%10<4)*n%10] || 'th');
 const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13l5.5 5.5L20 5" fill="none" stroke="#000" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 function freshState() {
   return {
     shape: shapeOf(MATCHUPS, CATEGORIES),
-    screen: 'join', sessionCode: '', participant: '',
+    screen: 'join', sessionCode: SESSION_LABEL, participant: '',
     submissionId: 'sub-' + Math.random().toString(36).slice(2) + '-' + Date.now(),
-    index: 0, step: 0, draft: emptyDraft(MATCHUPS, CATEGORIES)
+    surveyId: 'srv-' + Math.random().toString(36).slice(2) + '-' + Date.now(),
+    index: 0, step: 0, draft: emptyDraft(MATCHUPS, CATEGORIES), survey: {}
   };
 }
 
@@ -35,6 +35,13 @@ const saved = loadDraft();
 const state = draftMatches(saved, MATCHUPS, CATEGORIES) ? saved : freshState();
 if (saved && state !== saved) clearDraft();
 if (typeof state.step !== 'number') state.step = 0;
+// a draft saved by an earlier build: it typed a session code and had screens after the
+// lock that no longer exist. Everything a player locks now carries the fixed label.
+state.sessionCode = SESSION_LABEL;
+if (!state.survey) state.survey = {};
+if (!state.surveyId) state.surveyId = 'srv-' + Math.random().toString(36).slice(2) + '-' + Date.now();
+if (state.screen === 'locked') state.screen = 'survey';
+if (state.screen === 'results') state.screen = 'done';
 
 function go(screen) { state.screen = screen; state.menu = false; saveDraft(state); render(); window.scrollTo(0, 0); }
 
@@ -90,8 +97,9 @@ function route() {
   if (state.screen === 'join') return renderJoin();
   if (state.screen === 'play') return renderPlay();
   if (state.screen === 'review') return renderReview();
-  if (state.screen === 'locked') return renderLocked();
-  if (state.screen === 'results') return renderResults();
+  if (state.screen === 'survey') return renderSurvey();
+  if (state.screen === 'done') return renderDone();
+  return renderJoin();
 }
 
 function renderJoin() {
@@ -99,8 +107,6 @@ function renderJoin() {
     <div class="hero"><h1 class="logo">THE ONE <span class="badge">1</span></h1></div>
     <p class="hero-line">Pick. Predict. Compete.</p>
     <div class="join">
-      <label for="code">Session code</label>
-      <input id="code" placeholder="The presenter will say it">
       <label for="name">Your name</label>
       <input id="name" placeholder="How you appear on the board">
       <p class="err" id="joinErr"></p>
@@ -115,10 +121,9 @@ function renderJoin() {
     <div class="strip">${MATCHUPS.flatMap(m => [m.a, m.b]).map(c =>
       `<img src="${c.photo}" alt="${esc(c.name)}">`).join('')}</div>`;
   document.getElementById('start').onclick = () => {
-    const code = document.getElementById('code').value.trim();
     const name = document.getElementById('name').value.trim();
-    if (!code || !name) { document.getElementById('joinErr').textContent = 'Both are needed.'; return; }
-    state.sessionCode = normalizeCode(code); state.participant = name;
+    if (!name) { document.getElementById('joinErr').textContent = 'Your name is needed.'; return; }
+    state.sessionCode = SESSION_LABEL; state.participant = name;
     state.index = 0; state.step = 0; go('play');
   };
 }
@@ -273,7 +278,7 @@ function renderReview() {
       await submit({ sessionCode: state.sessionCode, participant: state.participant,
                      answers: state.draft, submissionId: state.submissionId },
                     { onAttempt: (n) => { btn.textContent = n === 1 ? 'Submitting…' : `Still submitting… (try ${n})`; } });
-      go('locked');
+      go('survey');
     } catch (err) {
       document.getElementById('lockErr').textContent =
         'Did not save. Tap to try again; it cannot double-count.';
@@ -282,70 +287,74 @@ function renderReview() {
   };
 }
 
-function renderLocked() {
-  el.innerHTML = `${chrome()}
-    <div class="banner"><strong>Locked</strong>Your predictions are in and cannot be changed.</div>
-    <p class="note">Waiting for the presenter to reveal the results. This screen will change by itself.</p>`;
-  const poll = async () => {
-    const s = await fetchState(state.sessionCode).catch(() => 'open');
-    if (s === 'revealed') go('results'); else setTimeout(poll, 10000);
+/** The end of the game. No results on the phone: only the presenter sees those. */
+function renderSurvey() {
+  const a = state.survey || {};
+  const complete = isSurveyComplete(a, SURVEY);
+  const field = (q) => {
+    if (q.type === 'scale') {
+      const min = q.min ?? 1, max = q.max ?? 5;
+      const btns = [];
+      for (let n = min; n <= max; n++) {
+        btns.push(`<button type="button" class="ghost pick ${a[q.key] === n ? 'on' : ''}" data-q="${q.key}" data-v="${n}">${n}</button>`);
+      }
+      return `<div class="scale">${btns.join('')}</div>
+        <div class="ends"><span>${esc(q.low || '')}</span><span>${esc(q.high || '')}</span></div>`;
+    }
+    if (q.type === 'choice') {
+      return `<div class="choice">${(q.options || []).map(o =>
+        `<button type="button" class="ghost pick ${a[q.key] === o ? 'on' : ''}" data-q="${q.key}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+    }
+    return `<textarea class="text" data-q="${q.key}" rows="3" placeholder="${q.required === false ? 'Optional' : 'A few words'}">${esc(a[q.key] || '')}</textarea>`;
   };
-  poll();
+  el.innerHTML = `<header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
+    <div class="banner"><strong>Locked</strong>Your predictions are in. Last thing: a few questions.</div>
+    ${SURVEY.map((q, i) => `<div class="card survey">
+      <h3>${i + 1}. ${esc(q.label)}${q.required === false ? ' <small>(optional)</small>' : ''}</h3>
+      ${field(q)}</div>`).join('')}
+    <p class="err" id="surveyErr"></p>
+    <button id="send" class="cta" ${complete ? '' : 'disabled'}>${complete ? 'Send my answers' : 'Answer everything first'}</button>`;
+  el.querySelectorAll('button.pick').forEach(b => {
+    b.onclick = () => {
+      const q = SURVEY.find(x => x.key === b.dataset.q);
+      const v = q.type === 'scale' ? Number(b.dataset.v) : b.dataset.v;
+      state.survey = setSurveyAnswer(state.survey, q.key, v);
+      saveDraft(state);
+      renderSurvey();
+    };
+  });
+  el.querySelectorAll('textarea.text').forEach(t => {
+    t.oninput = () => {
+      state.survey = setSurveyAnswer(state.survey, t.dataset.q, t.value);
+      saveDraft(state);
+      // rewriting the screen would steal the keyboard, so only the button changes
+      const ok = isSurveyComplete(state.survey, SURVEY);
+      const btn = document.getElementById('send');
+      btn.disabled = !ok; btn.textContent = ok ? 'Send my answers' : 'Answer everything first';
+    };
+  });
+  document.getElementById('send').onclick = async () => {
+    const btn = document.getElementById('send');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      await submitSurvey({ sessionCode: state.sessionCode, participant: state.participant,
+                           answers: state.survey, submissionId: state.surveyId },
+                         { onAttempt: (n) => { btn.textContent = n === 1 ? 'Sending…' : `Still sending… (try ${n})`; } });
+      go('done');
+    } catch (err) {
+      document.getElementById('surveyErr').textContent = 'Did not save. Tap to try again; it cannot double-count.';
+      btn.disabled = false; btn.textContent = 'Send my answers';
+    }
+  };
 }
 
-async function renderResults() {
-  el.innerHTML = `${chrome()}<p>Working out the results…</p>`;
-  let rows;
-  try {
-    rows = await fetchRows(state.sessionCode);
-  } catch (err) {
-    el.innerHTML = `${chrome()}<h2>Results</h2><p class="err">Could not load the results.</p>
-      <button id="retry" class="cta">Try again</button>`;
-    document.getElementById('retry').onclick = () => renderResults();
-    return;
-  }
-  const keys = CATEGORIES.map(c => c.key);
-  const crowd = {};
-  for (const m of MATCHUPS) crowd[m.id] = crowdResult(rows, m.id, keys, [m.a.id, m.b.id]);
-  const board = leaderboard(rows, crowd);
-  const me = board.find(r => r.submissionId === state.submissionId);
-  const label = (k) => (CATEGORIES.find(c => c.key === k) || {}).label || k;
-  const why = (r) => r.exact ? 'exact hit, 6'
-    : r.sameBand ? 'right band, 1'
-    : r.reason === 'no-data' ? 'nobody in the room picked your contestant, 0'
-    : r.reason === 'below-floor' ? `your contestant only got ${r.actual}%, below the floor, 0`
-    : `the room said ${r.actual}%, wrong band, 0`;
-  el.innerHTML = `${chrome()}
-    <p class="eyebrow">Results</p>
-    ${me ? `<div class="banner"><strong>${me.total}</strong>points, ${ordinal(me.rank)} of ${board.length}</div>`
-         : '<p class="err">Your submission was not found.</p>'}
-    ${me ? MATCHUPS.map(m => {
-      const s = me.perMatchup[m.id];
-      if (!s) return '';
-      const c = crowd[m.id];
-      const winner = [m.a, m.b].find(x => x.id === c.overallWinner);
-      return `<div class="card">
-        <h3>${esc(m.a.name)} v ${esc(m.b.name)} <span class="score">${s.total}</span></h3>
-        <p>Who is the one: ${c.overallTied ? 'the room tied, so nobody scored'
-          : `the room picked ${winner ? esc(winner.name) : 'nobody'}, you scored ${s.overall}`}</p>
-        <ul>${Object.entries(s.categories).map(([k, r]) =>
-          `<li><strong>${esc(label(k))}</strong>: ${r.points} — ${why(r)}</li>`).join('')}</ul></div>`;
-    }).join('') : ''}
-    <h2>The contest</h2>
-    <p class="note">The other competition: how the contestants did with the crowd.</p>
-    <ol class="board">${contestantStanding(rows, MATCHUPS, CATEGORIES).map(c =>
-      `<li><span>${esc(c.name)} <small>v ${esc(c.opponent)}</small></span>
-        <span class="pts">${c.tied ? 'tied' : c.wonOverall ? 'won' : 'lost'} · ${c.overallShare}% · ${c.categoriesWon}/${c.categoriesTotal}</span></li>`).join('')}</ol>
-
-    <h2>The prediction</h2>
-    <p class="note">Who read the room best.</p>
-    <ol class="board" id="board">${board.map(r =>
-      `<li class="${r.submissionId === state.submissionId ? 'me' : ''}">${esc(r.participant)}<span class="pts">${r.total}</span></li>`).join('')}</ol>
+function renderDone() {
+  el.innerHTML = `<header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
+    <div class="banner"><strong>Done</strong>Thank you, ${esc(state.participant)}. That is everything.</div>
+    <p class="note">Your predictions and your answers are with the presenter.</p>
     <button id="again" class="ghost">Start again on this phone</button>
-    <p class="note">Only do this once the round is over. It clears your answers from this device.</p>`;
-  wireChrome(MATCHUPS[0]);
-  const again = document.getElementById('again');
-  if (again) again.onclick = () => { clearDraft(); location.replace(location.pathname); };
+    <p class="note">Only for handing the phone to someone else. It clears this device.</p>`;
+  document.getElementById('again').onclick = () => { clearDraft(); location.replace(location.pathname); };
 }
 
 render();

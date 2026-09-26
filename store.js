@@ -8,6 +8,11 @@ export function buildSubmission({ sessionCode, participant, answers, submissionI
   return { kind: 'submission', sessionCode, participant, answers, submissionId };
 }
 
+/** The survey travels the same way as a lock, under its own id, so a retry never doubles. */
+export function buildSurveySubmission({ sessionCode, participant, answers, submissionId }) {
+  return { kind: 'survey', sessionCode, participant, answers, submissionId };
+}
+
 export function parseRows(response) {
   if (!response || !response.ok || !Array.isArray(response.rows)) return [];
   return response.rows.filter(r => r && r.answers && typeof r.answers === 'object');
@@ -35,6 +40,15 @@ async function post(body) {
  * loses a participant's whole set.
  */
 export async function submit(payload, opts = {}) {
+  return send(buildSubmission(payload), opts);
+}
+
+/** Same patience as a lock: the answers are worth as much and the server is as busy. */
+export async function submitSurvey(payload, opts = {}) {
+  return send(buildSurveySubmission(payload), opts);
+}
+
+async function send(body, opts = {}) {
   const attempts = opts.attempts ?? 8;
   const base = opts.baseDelayMs ?? 2000;
   const onAttempt = opts.onAttempt || (() => {});
@@ -42,7 +56,7 @@ export async function submit(payload, opts = {}) {
   for (let n = 1; n <= attempts; n++) {
     onAttempt(n);
     try {
-      const r = await post(buildSubmission(payload));
+      const r = await post(body);
       if (!r || r.ok !== true) throw new Error((r && r.error) || 'rejected by the server');
       return r;
     } catch (err) {
@@ -84,7 +98,18 @@ export async function fetchState(sessionCode) {
   return data.state || 'open';
 }
 
-export async function fetchRows(sessionCode) {
-  const res = await fetch(`${ENDPOINT}?what=rows&code=${encodeURIComponent(normalizeCode(sessionCode))}`);
-  return parseRows(await res.json());
+/**
+ * The statistics page. The server only answers with the presenter key, because the
+ * participant link is public and these are everyone's answers. A refusal is thrown,
+ * not swallowed, so the presenter sees "wrong presenter key" rather than an empty room.
+ */
+async function fetchGated(what, sessionCode, key) {
+  const q = `what=${what}&code=${encodeURIComponent(normalizeCode(sessionCode))}&key=${encodeURIComponent(String(key == null ? '' : key).trim())}`;
+  const res = await fetch(`${ENDPOINT}?${q}`);
+  const data = await res.json();
+  if (!data || data.ok !== true) throw new Error((data && data.error) || 'the server refused it');
+  return parseRows(data);
 }
+
+export async function fetchRows(sessionCode, key) { return fetchGated('rows', sessionCode, key); }
+export async function fetchSurvey(sessionCode, key) { return fetchGated('survey', sessionCode, key); }

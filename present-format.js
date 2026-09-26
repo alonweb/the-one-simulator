@@ -35,3 +35,30 @@ export function summariseMatchup(matchup, entry, categories) {
   }
   return { title: `${matchup.a.name} v ${matchup.b.name}`, lines, complete };
 }
+
+/** One player's answers on one matchup, each next to the room's answer, for the presenter. */
+export function answerRows(matchup, answer, crowd, score, categories) {
+  const name = (id) => id === matchup.a.id ? matchup.a.name : id === matchup.b.id ? matchup.b.name : 'unknown';
+  const rows = [];
+  const o = (answer && answer.overall) || {};
+  const c = crowd || {};
+  rows.push({
+    question: 'Who is the one',
+    yours: o.predicted ? `${name(o.predicted)} (voted ${name(o.vote)})` : 'not answered',
+    room: c.overallTied ? 'tied' : c.overallWinner ? name(c.overallWinner) : 'no votes',
+    points: score ? score.overall || 0 : 0
+  });
+  for (const cat of categories || []) {
+    const a = ((answer && answer.categories) || {})[cat.key];
+    const s = score && score.categories && score.categories[cat.key];
+    const shares = (c.categories || {})[cat.key] || {};
+    const all = Object.entries(shares).map(([id, p]) => `${name(id)} ${p}%`).join(', ') || 'no votes';
+    rows.push({
+      question: cat.label,
+      yours: a && a.contestant ? `${name(a.contestant)} ${a.share}% (voted ${name(a.vote)})` : 'not answered',
+      room: a && a.contestant && shares[a.contestant] !== undefined ? `${name(a.contestant)} ${shares[a.contestant]}%` : all,
+      points: s ? s.points || 0 : 0
+    });
+  }
+  return rows;
+}
