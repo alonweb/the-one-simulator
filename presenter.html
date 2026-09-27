@@ -27,10 +27,10 @@
   details summary { cursor: pointer; font-weight: 800; margin: 12px 0; }
   td a { color: var(--ink); font-weight: 700; text-decoration: underline; }
   .player { scroll-margin-top: 12px; }
-  /* the photos are 5:6 portraits; the frame keeps that ratio so no head is cropped */
-  img.thumb { width: 45px; height: 54px; border-radius: 8px; object-fit: contain; background: var(--grey-2);
-    vertical-align: middle; margin-right: 8px; border: 2px solid var(--ink); }
-  .player h4 img.thumb, details h3 img.thumb { width: 35px; height: 42px; }
+  /* never cropped: the width is fixed and the height follows the photo's own shape */
+  img.thumb { width: 48px; height: auto; border-radius: 8px; vertical-align: middle;
+    margin-right: 8px; border: 2px solid var(--ink); }
+  .player h4 img.thumb, details h3 img.thumb { width: 38px; }
   table.contest td.won { background: var(--yellow-pale); font-weight: 700; }
   table.contest th, table.contest td { padding: 8px 10px; white-space: nowrap; }
   .player h3 .up { font-size: 13px; font-weight: 600; margin-left: 10px; color: var(--muted); }
