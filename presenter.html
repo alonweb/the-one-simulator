@@ -27,9 +27,10 @@
   details summary { cursor: pointer; font-weight: 800; margin: 12px 0; }
   td a { color: var(--ink); font-weight: 700; text-decoration: underline; }
   .player { scroll-margin-top: 12px; }
-  img.thumb { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; object-position: 50% 25%;
+  /* the photos are 5:6 portraits; the frame keeps that ratio so no head is cropped */
+  img.thumb { width: 45px; height: 54px; border-radius: 8px; object-fit: contain; background: var(--grey-2);
     vertical-align: middle; margin-right: 8px; border: 2px solid var(--ink); }
-  .player h4 img.thumb, details h3 img.thumb { width: 28px; height: 28px; }
+  .player h4 img.thumb, details h3 img.thumb { width: 35px; height: 42px; }
   table.contest td.won { background: var(--yellow-pale); font-weight: 700; }
   table.contest th, table.contest td { padding: 8px 10px; white-space: nowrap; }
   .player h3 .up { font-size: 13px; font-weight: 600; margin-left: 10px; color: var(--muted); }
