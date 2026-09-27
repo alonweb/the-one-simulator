@@ -53,10 +53,10 @@ function chrome() {
         <span></span><span></span><span></span></button>
     </header>
     ${state.menu ? `<nav class="menu">
-      <button id="mReview">Review my answers</button>
-      <button id="mSurvey" ${state.surveySent ? 'disabled' : ''}>${state.surveySent ? 'Survey sent' : 'Answer the survey'}</button>
-      <button id="mClear">Clear this matchup</button>
-      <button id="mOver">Start from the beginning</button>
+      ${state.locked ? '' : '<button id="mReview">Review my answers</button>'}
+      <button id="mSurvey" ${state.surveySent || state.screen === 'survey' ? 'disabled' : ''}>${state.surveySent ? 'Survey sent' : 'Answer the survey'}</button>
+      ${state.locked ? '' : '<button id="mClear">Clear this matchup</button>'}
+      ${state.locked ? '<button id="mAgain">Start again on this phone</button>' : '<button id="mOver">Start from the beginning</button>'}
     </nav>` : ''}`;
 }
 
@@ -67,7 +67,13 @@ function wireChrome(m) {
   if (review) review.onclick = () => go('review');
   // the survey can be answered at any point; it remembers where to come back to
   const survey = document.getElementById('mSurvey');
-  if (survey && !state.surveySent) survey.onclick = () => { state.surveyReturn = state.screen; go('survey'); };
+  if (survey && !state.surveySent && state.screen !== 'survey') survey.onclick = () => { state.surveyReturn = state.screen; go('survey'); };
+  // after the lock the answers are final, so the menu only offers the survey and a clean start
+  const again = document.getElementById('mAgain');
+  if (again) again.onclick = () => {
+    if (!confirm('Clear this phone and start again? Only for handing it to someone else.')) return;
+    clearDraft(); location.replace(location.pathname);
+  };
   const clear = document.getElementById('mClear');
   if (clear) clear.onclick = () => {
     if (!confirm(`Clear your answers for ${m.a.name} v ${m.b.name}? The other matchups are not touched.`)) return;
@@ -282,6 +288,7 @@ function renderReview() {
       await submit({ sessionCode: state.sessionCode, participant: state.participant,
                      answers: state.draft, submissionId: state.submissionId },
                     { onAttempt: (n) => { btn.textContent = n === 1 ? 'Submitting…' : `Still submitting… (try ${n})`; } });
+      state.locked = true;
       state.surveyReturn = null;
       go(state.surveySent ? 'done' : 'survey');
     } catch (err) {
@@ -313,7 +320,7 @@ function renderSurvey() {
     return `<textarea class="text" data-q="${q.key}" rows="3" placeholder="${q.required === false ? 'Optional' : 'A few words'}">${esc(a[q.key] || '')}</textarea>`;
   };
   const fromMenu = !!state.surveyReturn;
-  el.innerHTML = `<header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
+  el.innerHTML = `${chrome()}
     ${fromMenu
       ? `<div class="banner"><strong>Survey</strong>A few questions from the team. Your matchup answers are kept.</div>`
       : `<div class="banner"><strong>Locked</strong>Your predictions are in. Last thing: a few questions.</div>`}
@@ -323,6 +330,7 @@ function renderSurvey() {
     <p class="err" id="surveyErr"></p>
     <button id="send" class="cta" ${complete ? '' : 'disabled'}>${complete ? 'Send my answers' : 'Answer everything first'}</button>
     ${fromMenu ? `<div class="nav"><button id="surveyBack" class="ghost">Back to the game</button></div>` : ''}`;
+  wireChrome(MATCHUPS[state.index] || MATCHUPS[0]);
   const back = document.getElementById('surveyBack');
   if (back) back.onclick = () => { const to = state.surveyReturn; state.surveyReturn = null; go(to); };
   el.querySelectorAll('button.pick').forEach(b => {
@@ -362,11 +370,12 @@ function renderSurvey() {
 }
 
 function renderDone() {
-  el.innerHTML = `<header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
+  el.innerHTML = `${chrome()}
     <div class="banner"><strong>Done</strong>Thank you, ${esc(state.participant)}. That is everything.</div>
     <p class="note">Your predictions and your answers are with the presenter.</p>
     <button id="again" class="ghost">Start again on this phone</button>
     <p class="note">Only for handing the phone to someone else. It clears this device.</p>`;
+  wireChrome(MATCHUPS[0]);
   document.getElementById('again').onclick = () => { clearDraft(); location.replace(location.pathname); };
 }
 
