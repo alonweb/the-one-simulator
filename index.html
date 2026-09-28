@@ -3,14 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>THE ONE</title>
+<title>THE ONE — under construction</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --yellow: #FFFF00; --ink: #000000; --white: #FFFFFF; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--yellow); color: var(--ink); font-family: Archivo, system-ui, sans-serif;
+         display: grid; place-items: center; padding: 16px; }
+  main { max-width: 460px; width: 100%; text-align: center; }
+  .logo { font-weight: 900; font-size: clamp(44px, 15vw, 66px); letter-spacing: -.02em; margin: 0; }
+  .badge { display: inline-grid; place-items: center; background: var(--ink); color: var(--yellow);
+           border-radius: 50%; width: 1.25em; height: 1.25em; line-height: 1; font-size: .55em; vertical-align: .2em; }
+  .card { background: var(--ink); color: var(--white); border-radius: 30px; padding: 26px 22px; margin-top: 22px; }
+  .card strong { display: block; color: var(--yellow); font-size: clamp(30px, 9vw, 42px); font-weight: 900; line-height: 1.05; margin-bottom: 10px; }
+  .card p { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.4; }
+</style>
 </head>
 <body>
-  <main id="screen"><p class="note">Loading&hellip;</p></main>
-  <script type="module" src="app.js"></script>
+  <main>
+    <h1 class="logo">THE ONE <span class="badge">1</span></h1>
+    <div class="card">
+      <strong>Under construction</strong>
+      <p>We are making changes to the game. This link will work again soon.</p>
+    </div>
+  </main>
 </body>
 </html>

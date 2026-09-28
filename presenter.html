@@ -3,60 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>THE ONE — presenter</title>
+<title>THE ONE — under construction</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&display=swap" rel="stylesheet">
 <style>
-  body { max-width: 900px; padding-bottom: 40px; }
-  .bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 14px 0; }
-  .bar button { width: auto; min-width: 170px; margin-top: 0; }
-  .bar input { width: 220px; }
-  table { border-collapse: collapse; width: 100%; margin: 10px 0;
-          border: 2px solid var(--ink); border-radius: 18px; overflow: hidden; }
-  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--grey); }
-  th { background: var(--yellow); font-weight: 800; }
-  tr:last-child td { border-bottom: 0; }
-  .warn { font-weight: 800; background: var(--yellow); padding: 10px 16px; border-radius: 14px; }
-  .player { border: 2px solid var(--ink); border-radius: 22px; padding: 12px 18px; margin: 14px 0; }
-  .player h3 { margin: 0 0 6px; display: flex; justify-content: space-between; }
-  .player table { margin: 6px 0 10px; font-size: 14px; }
-  .player h4 { margin: 10px 0 2px; font-size: 15px; }
-  .pts { font-weight: 800; text-align: right; }
-  details summary { cursor: pointer; font-weight: 800; margin: 12px 0; }
-  td a { color: var(--ink); font-weight: 700; text-decoration: underline; }
-  .player { scroll-margin-top: 12px; }
-  /* never cropped: the width is fixed and the height follows the photo's own shape */
-  img.thumb { width: 48px; height: auto; border-radius: 8px; vertical-align: middle;
-    margin-right: 8px; border: 2px solid var(--ink); }
-  .player h4 img.thumb, details h3 img.thumb { width: 38px; }
-  table.contest td.won { background: var(--yellow-pale); font-weight: 700; }
-  table.contest th, table.contest td { padding: 8px 10px; white-space: nowrap; }
-  .player h3 .up { font-size: 13px; font-weight: 600; margin-left: 10px; color: var(--muted); }
+  :root { --yellow: #FFFF00; --ink: #000000; --white: #FFFFFF; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--yellow); color: var(--ink); font-family: Archivo, system-ui, sans-serif;
+         display: grid; place-items: center; padding: 16px; }
+  main { max-width: 460px; width: 100%; text-align: center; }
+  .logo { font-weight: 900; font-size: clamp(44px, 15vw, 66px); letter-spacing: -.02em; margin: 0; }
+  .badge { display: inline-grid; place-items: center; background: var(--ink); color: var(--yellow);
+           border-radius: 50%; width: 1.25em; height: 1.25em; line-height: 1; font-size: .55em; vertical-align: .2em; }
+  .card { background: var(--ink); color: var(--white); border-radius: 30px; padding: 26px 22px; margin-top: 22px; }
+  .card strong { display: block; color: var(--yellow); font-size: clamp(30px, 9vw, 42px); font-weight: 900; line-height: 1.05; margin-bottom: 10px; }
+  .card p { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.4; }
 </style>
 </head>
 <body>
-  <header class="top" id="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>
-  <p class="eyebrow">Presenter</p>
-  <div id="login">
-    <p>Enter the presenter key to see the statistics.</p>
-    <form class="bar" id="loginForm">
-      <input id="key" type="password" placeholder="Presenter key" autocomplete="current-password" autofocus>
-      <button id="load" class="cta" style="margin-top:0" type="submit">Enter</button>
-    </form>
-    <p class="note">The key stays on this device. Never give it to participants.</p>
-    <div id="loginErr"></div>
-  </div>
-  <div id="stats" hidden>
-    <div class="bar">
-      <button id="close" class="ghost">Close the round</button>
-      <button id="export" class="ghost">Export raw answers</button>
-      <button id="reset" class="ghost">Reset the sheet</button>
-      <button id="logout" class="ghost">Log out</button>
+  <main>
+    <h1 class="logo">THE ONE <span class="badge">1</span></h1>
+    <div class="card">
+      <strong>Under construction</strong>
+      <p>We are making changes to the game. This link will work again soon.</p>
     </div>
-    <div id="out"></div>
-  </div>
-  <script type="module" src="presenter.js"></script>
+  </main>
 </body>
 </html>
