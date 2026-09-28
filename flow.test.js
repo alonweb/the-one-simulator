@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { questionsOf, nextStop, prevStop, isQuestionAnswered, predictionPatch, sliderOf } from './flow.js';
+import { questionsOf, isQuestionAnswered, predictionPatch, sliderOf } from './flow.js';
 
 const CATS = [{ key: 'smile', label: 'the best smile?' }, { key: 'style', label: 'the best style?' }];
 
@@ -10,24 +10,6 @@ test('the questions are the overall one followed by the categories, numbered fro
   assert.deepEqual(qs.map(q => q.n), [1, 2, 3]);
   assert.equal(qs[0].label, 'who is the one?');
   assert.equal(qs[2].label, 'the best style?');
-});
-
-test('next walks the questions of a matchup, then moves to the next matchup', () => {
-  assert.deepEqual(nextStop(0, 0, 2, 3), { index: 0, step: 1 });
-  assert.deepEqual(nextStop(0, 2, 2, 3), { index: 1, step: 0 });
-});
-
-test('next returns null after the last question of the last matchup', () => {
-  assert.equal(nextStop(1, 2, 2, 3), null);
-});
-
-test('previous walks back into the last question of the matchup before', () => {
-  assert.deepEqual(prevStop(1, 0, 3), { index: 0, step: 2 });
-  assert.deepEqual(prevStop(0, 1, 3), { index: 0, step: 0 });
-});
-
-test('previous returns null at the very first question', () => {
-  assert.equal(prevStop(0, 0, 3), null);
 });
 
 test('the overall question needs a vote and a predicted contestant', () => {

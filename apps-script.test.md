@@ -46,6 +46,13 @@ curl -sS -L "$URL?what=survey&code=T1&key=$KEY"
 curl -sS -L "$URL?what=rows&key=$KEY"
 # expect every row in the responses tab
 
+# 8b. (2026-09-28) releases: key-gated, listed once each, in release order, beside the round state
+curl -sS -L --data "{\"kind\":\"release\",\"sessionCode\":\"T1\",\"matchupId\":\"m2\",\"key\":\"$KEY\"}" -H 'Content-Type: text/plain' "$URL"
+curl -sS -L --data '{"kind":"release","sessionCode":"T1","matchupId":"m1","key":"WRONG"}' -H 'Content-Type: text/plain' "$URL"
+# expect {"ok":true,"released":"m2"}, then {"ok":false,"error":"wrong presenter key"}
+curl -sS -L "$URL?what=state&code=T1"
+# expect {"ok":true,"state":"closed","released":["m2"]}  (closed from step 4)
+
 # 9. reset wipes the three tabs below their headers (do this last)
 curl -sS -L --data '{"kind":"reset","key":"WRONG"}' -H 'Content-Type: text/plain' "$URL"
 # expect {"ok":false,"error":"wrong presenter key"} and nothing wiped
@@ -54,6 +61,9 @@ curl -sS -L --data "{\"kind\":\"reset\",\"key\":\"$KEY\"}" -H 'Content-Type: tex
 ```
 
 Delete the `T1` rows from all three sheets afterwards.
+
+The same rules run offline with `node --test apps-script.test.js`, against stand-ins for
+Google's services (`gas-mock.mjs`). That proves the logic, not the deployment.
 
 ## Result
 

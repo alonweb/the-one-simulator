@@ -1,8 +1,10 @@
 # THE ONE — focus group simulator
 
 A throwaway research instrument for one live session. Twenty people play one round of
-THE ONE on their own phones, answer a short survey, and are done; the presenter alone sees the
-scored leaderboard, every player's answers and the survey.
+THE ONE on their own phones, one matchup at a time as the presenter releases each, answer a
+short survey, and are done; the presenter alone sees the scored board, every player's answers
+and the survey, and can project the board for the room between matchups. The release-by-release
+pacing is for the meeting only; it is not how the product runs a round.
 None of this is production code.
 
 Spec and plan live in the HumanPatterns project under
@@ -20,6 +22,7 @@ Spec and plan live in the HumanPatterns project under
 | `store.js` | The only code that touches the network. |
 | `config.js` | Everything you change between sessions: the categories, the matchups, the survey questions and the session label. |
 | `apps-script.gs` | The server side. Paste into Apps Script; see below. |
+| `gas-mock.mjs`, `apps-script.test.js` | Runs `apps-script.gs` in node against stand-ins for Google's services, so the server's rules are tested before it is pasted. |
 | `rehearse.mjs` | Submits synthetic participants so the path is proven before the day. |
 
 ## Before the session
@@ -60,7 +63,7 @@ page to one session's rows.
 
 ## The survey
 
-After locking, a player answers the questions in `SURVEY` (`config.js`), then sees a
+After locking the fifth matchup, a player answers the questions in `SURVEY` (`config.js`), then sees a
 thank-you screen. The menu also offers **Answer the survey** at any point; the game
 resumes where it was, and a survey is sent once per device. Players never see results. Answers land in a `survey` tab the script
 creates on first use, and appear in the presenter page under "The survey". Three question
@@ -71,7 +74,7 @@ types: `scale` (min..max with end labels), `choice` (one of `options`), `text`.
 
 The endpoint URL is in `config.js`, so it reaches every participant's browser. That is
 unavoidable: the page has to write to it. What the presenter key adds is that only the
-presenter can **close a round**, **wipe the sheet**, and **read anyone's answers** — the
+presenter can **release a matchup**, **close a round**, **wipe the sheet**, and **read anyone's answers** — the
 statistics page is refused without it. Submitting answers needs no key.
 
 Nothing here is real security. The key travels in the request to our own endpoint and
@@ -81,14 +84,19 @@ data is a focus group's opinions about photographs, not anything that needs to.
 ## On the day
 
 1. Open `presenter.html`, enter the presenter key and press **Enter**. The statistics page opens; **Log out** takes you back.
-2. Participants open the participant link, enter their name, and play. After locking they
-   answer the survey and see a thank-you screen. They never see results.
-3. Watch the lock count and the survey count in the presenter page. Nothing appears until a
-   person **locks**, because the page sends one request at lock and nothing before it.
-   The page cannot tell you who has joined and is still playing, so count the room.
-4. When everyone has locked: **Close the round**. The ranking, every player's answers and
-   the survey are on the page and refresh every 15 seconds.
-5. **Export raw answers** before you close the laptop. The export holds the survey too. Do not edit `config.js` once the
+2. Participants open the participant link and enter their name. Their phone waits until you
+   release a matchup.
+3. **Release** a matchup in the Competitions strip. Every waiting phone opens it within about
+   five seconds. Release one, or several at once; players answer released matchups in matchup
+   order and lock each on its own. A release cannot be taken back (only Reset clears it).
+4. Watch the lock count next to each matchup. It counts locks only: the page cannot tell you
+   who has joined and is still playing, so count the room. When the room is in, press
+   **Project the board**: the board alone, large, with no answers or survey on it. Esc or
+   Close returns to the page. Then release the next matchup.
+5. After the fifth lock a player answers the survey and sees a thank-you screen. Phones never
+   show results. When everyone has locked the fifth: **Close the round**. The page refreshes
+   every 10 seconds.
+6. **Export raw answers** before you close the laptop. The export holds the survey too. Do not edit `config.js` once the
    first person has locked: category keys and matchup ids are the join between a stored
    answer and the reveal, and changing one strands the answers already in the sheet. That file is what the session can be
    re-scored from afterwards, and it is the only copy that does not need the sheet.

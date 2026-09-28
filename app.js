@@ -1,11 +1,12 @@
 import { MATCHUPS, CATEGORIES, SURVEY, SESSION_LABEL } from './config.js';
-import { submit, submitSurvey } from './store.js';
+import { submit, submitSurvey, fetchSession, lockIdOf } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { summariseMatchup } from './present-format.js';
 import { setSurveyAnswer, isSurveyComplete } from './survey.js';
 import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset,
          shapeOf, draftMatches, clearMatchup } from './draft.js';
-import { questionsOf, nextStop, prevStop, isQuestionAnswered, predictionPatch, sliderOf } from './flow.js';
+import { questionsOf, nextCompetition, nextQuestion, prevQuestion, isQuestionAnswered,
+         predictionPatch, sliderOf } from './flow.js';
 
 const el = document.getElementById('screen');
 const QUESTIONS = questionsOf(CATEGORIES);
@@ -25,7 +26,8 @@ function freshState() {
     screen: 'join', sessionCode: SESSION_LABEL, participant: '',
     submissionId: 'sub-' + Math.random().toString(36).slice(2) + '-' + Date.now(),
     surveyId: 'srv-' + Math.random().toString(36).slice(2) + '-' + Date.now(),
-    index: 0, step: 0, draft: emptyDraft(MATCHUPS, CATEGORIES), survey: {}
+    index: 0, step: 0, draft: emptyDraft(MATCHUPS, CATEGORIES), survey: {},
+    lockedIds: [], released: [], roundState: 'open'
   };
 }
 
@@ -42,8 +44,47 @@ if (!state.survey) state.survey = {};
 if (!state.surveyId) state.surveyId = 'srv-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 if (state.screen === 'locked') state.screen = 'survey';
 if (state.screen === 'results') state.screen = 'done';
+// an earlier build locked all five matchups at once
+if (!Array.isArray(state.lockedIds)) state.lockedIds = state.locked ? MATCHUPS.map(m => m.id) : [];
+if (!Array.isArray(state.released)) state.released = [];
+if (!state.roundState) state.roundState = 'open';
+
+const isLocked = (id) => state.lockedIds.includes(id);
+const allLocked = () => MATCHUPS.every(m => isLocked(m.id));
 
 function go(screen) { state.screen = screen; state.menu = false; saveDraft(state); render(); window.scrollTo(0, 0); }
+
+/**
+ * Moves the player on from wherever they are: into the next released matchup, to the
+ * survey once all five are locked, or nowhere (false), which means wait.
+ */
+function advance() {
+  if (allLocked()) { go(state.surveySent ? 'done' : 'survey'); return true; }
+  if (state.roundState !== 'open') return false;
+  const i = nextCompetition(MATCHUPS, state.released, state.lockedIds);
+  if (i < 0) return false;
+  state.index = i; state.step = 0; go('play');
+  return true;
+}
+
+// The waiting phone asks the server every few seconds which matchups are released.
+// The jitter keeps a room of phones from asking in the same instant.
+let pollTimer = null;
+let polling = false;
+function pollSoon(ms) { clearTimeout(pollTimer); pollTimer = setTimeout(poll, ms); }
+async function poll() {
+  if (state.screen !== 'wait' || polling) return;
+  polling = true;
+  try {
+    const s = await fetchSession(SESSION_LABEL);
+    state.released = s.released; state.roundState = s.state; state.offline = false;
+    saveDraft(state);
+  } catch (e) { state.offline = true; }
+  finally { polling = false; }
+  if (state.screen !== 'wait' || advance()) return;
+  renderWait();
+  pollSoon(4000 + Math.random() * 2000);
+}
 
 /** The chrome every screen carries: the wordmark, and the menu behind the three lines. */
 function chrome() {
@@ -53,10 +94,10 @@ function chrome() {
         <span></span><span></span><span></span></button>
     </header>
     ${state.menu ? `<nav class="menu">
-      ${state.locked ? '' : '<button id="mReview">Review my answers</button>'}
+      ${state.screen === 'play' ? '<button id="mReview">Review my answers</button>' : ''}
       <button id="mSurvey" ${state.surveySent || state.screen === 'survey' ? 'disabled' : ''}>${state.surveySent ? 'Survey sent' : 'Answer the survey'}</button>
-      ${state.locked ? '' : '<button id="mClear">Clear this matchup</button>'}
-      ${state.locked ? '<button id="mAgain">Start again on this phone</button>' : '<button id="mOver">Start from the beginning</button>'}
+      ${state.screen === 'play' || state.screen === 'review' ? '<button id="mClear">Clear this matchup</button>' : ''}
+      ${state.lockedIds.length ? '<button id="mAgain">Start again on this phone</button>' : '<button id="mOver">Start from the beginning</button>'}
     </nav>` : ''}`;
 }
 
@@ -68,7 +109,7 @@ function wireChrome(m) {
   // the survey can be answered at any point; it remembers where to come back to
   const survey = document.getElementById('mSurvey');
   if (survey && !state.surveySent && state.screen !== 'survey') survey.onclick = () => { state.surveyReturn = state.screen; go('survey'); };
-  // after the lock the answers are final, so the menu only offers the survey and a clean start
+  // a locked matchup is final, so from the first lock on only a clean start is offered
   const again = document.getElementById('mAgain');
   if (again) again.onclick = () => {
     if (!confirm('Clear this phone and start again? Only for handing it to someone else.')) return;
@@ -104,7 +145,9 @@ function render() {
 }
 
 function route() {
+  if (state.screen !== 'wait') clearTimeout(pollTimer);
   if (state.screen === 'join') return renderJoin();
+  if (state.screen === 'wait') { renderWait(); if (!polling) pollSoon(0); return; }
   if (state.screen === 'play') return renderPlay();
   if (state.screen === 'review') return renderReview();
   if (state.screen === 'survey') return renderSurvey();
@@ -125,6 +168,7 @@ function renderJoin() {
     <div class="rules">
       <p>Five matchups, five questions each. Every question asks you twice: who <strong>you</strong>
       pick, and how you think <strong>the room</strong> will split.</p>
+      <p>The presenter opens each matchup when it is time. Lock it, and wait for the next.</p>
       <p>Points come from reading the room, not from your own taste.</p>
     </div>
     <p class="eyebrow" style="margin-top:22px">Tonight's ten</p>
@@ -134,8 +178,30 @@ function renderJoin() {
     const name = document.getElementById('name').value.trim();
     if (!name) { document.getElementById('joinErr').textContent = 'Your name is needed.'; return; }
     state.sessionCode = SESSION_LABEL; state.participant = name;
-    state.index = 0; state.step = 0; go('play');
+    state.index = 0; state.step = 0; go('wait');
   };
+}
+
+/** Between matchups: nothing to do until the presenter releases the next one. */
+function renderWait() {
+  const n = state.lockedIds.length;
+  const closed = state.roundState !== 'open';
+  const banner = closed
+    ? `<strong>Closed</strong>The presenter has closed the game. Thank you, ${esc(state.participant)}.`
+    : n === 0
+      ? `<strong>Ready</strong>Hi ${esc(state.participant)}. The first matchup opens when the presenter releases it.`
+      : `<strong>Locked</strong>Matchup ${n} of ${MATCHUPS.length} is in. The next one opens when the presenter releases it.`;
+  el.innerHTML = `${chrome()}
+    <div class="banner">${banner}</div>
+    <div class="strip">${MATCHUPS.map(m => `<div class="slot ${isLocked(m.id) ? 'done' : ''}">
+      <img src="${m.a.photo}" alt=""><img src="${m.b.photo}" alt="">
+      <span>${isLocked(m.id) ? 'Locked' : 'Matchup ' + (MATCHUPS.indexOf(m) + 1)}</span></div>`).join('')}</div>
+    ${closed ? '' : '<p class="note">Keep this page open. It moves on by itself.</p>'}
+    ${state.offline ? '<p class="err">Cannot reach the server. Still trying.</p>' : ''}
+    ${closed && !state.surveySent ? '<button id="toSurvey" class="cta">Answer the survey</button>' : ''}`;
+  wireChrome(MATCHUPS[state.index] || MATCHUPS[0]);
+  const s = document.getElementById('toSurvey');
+  if (s) s.onclick = () => go('survey');
 }
 
 /** The both-sides readout under the slider, as its own markup so it can be rewritten
@@ -146,6 +212,8 @@ function splitMarkup(m, pos) {
 
 function renderPlay() {
   const m = MATCHUPS[state.index];
+  // a saved screen that points at a matchup already locked, or never released
+  if (!m || isLocked(m.id) || !state.released.includes(m.id)) return go('wait');
   state.step = Math.min(Math.max(state.step, 0), QUESTIONS.length - 1);
   const q = QUESTIONS[state.step];
   const entry = state.draft[m.id];
@@ -153,8 +221,8 @@ function renderPlay() {
   const voted = !!(ans && ans.vote);
   const done = isQuestionAnswered(q.key, ans);
   const pos = sliderOf(q.key, ans, m.a.id);
-  const back = prevStop(state.index, state.step, QUESTIONS.length);
-  const ahead = nextStop(state.index, state.step, MATCHUPS.length, QUESTIONS.length);
+  const back = prevQuestion(state.step);
+  const ahead = nextQuestion(state.step, QUESTIONS.length);
 
   const shot = (c) => `
     <div class="shot ${voted ? (ans.vote === c.id ? 'chosen' : 'dim') : ''}">
@@ -171,12 +239,11 @@ function renderPlay() {
 
   const cta = !voted ? 'Pick one first'
             : !done ? 'Move the slider'
-            : ahead ? (ahead.index !== state.index ? 'Next matchup' : 'Next')
-                    : 'Review my answers';
+            : ahead !== null ? 'Next' : 'Review and lock';
 
   el.innerHTML = `${chrome()}
     <div class="crumbs">
-      ${back ? '<button class="back" id="back"><span aria-hidden="true">&lsaquo;</span> Back</button>' : ''}
+      ${back !== null ? '<button class="back" id="back"><span aria-hidden="true">&lsaquo;</span> Back</button>' : ''}
       <span class="where">Matchup ${state.index + 1} of ${MATCHUPS.length} &middot; question ${q.n} of ${QUESTIONS.length}</span>
     </div>
     <div class="stage">
@@ -224,7 +291,7 @@ function wirePlay(m, q, back, ahead) {
       const ok = pos !== 50;
       next.disabled = !ok;
       next.querySelector('.lbl').textContent = ok
-        ? (ahead ? (ahead.index !== state.index ? 'Next matchup' : 'Next') : 'Review my answers')
+        ? (ahead !== null ? 'Next' : 'Review and lock')
         : 'Move the slider';
     };
     range.onchange = () => { write(predictionPatch(q.key, Number(range.value), m.a.id, m.b.id)); };
@@ -235,11 +302,11 @@ function wirePlay(m, q, back, ahead) {
   });
 
   document.getElementById('next').onclick = () => {
-    if (!ahead) return go('review');
-    state.index = ahead.index; state.step = ahead.step; go('play');
+    if (ahead === null) return go('review');
+    state.step = ahead; go('play');
   };
   const b = document.getElementById('back');
-  if (b) b.onclick = () => { state.index = back.index; state.step = back.step; go('play'); };
+  if (b) b.onclick = () => { state.step = back; go('play'); };
 }
 
 /** A photograph on its own, because a phone held at arm's length in a meeting room is small. */
@@ -252,14 +319,15 @@ function lightbox(c) {
 }
 
 function renderReview() {
-  const done = isComplete(state.draft, MATCHUPS, CATEGORIES);
-  const summaries = MATCHUPS.map(m => summariseMatchup(m, state.draft[m.id], CATEGORIES));
-  const missing = summaries.filter(s => !s.complete).map(s => s.title);
+  const m = MATCHUPS[state.index];
+  if (!m || isLocked(m.id)) return go('wait');
+  const done = isComplete(state.draft, [m], CATEGORIES);
+  const summaries = [summariseMatchup(m, state.draft[m.id], CATEGORIES)];
   el.innerHTML = `${chrome()}
-    <p class="eyebrow">Before you lock</p>
+    <p class="eyebrow">Before you lock &middot; matchup ${state.index + 1} of ${MATCHUPS.length}</p>
     <h2 style="margin-top:0">Review</h2>
-    <p>${done ? 'Everything is answered. Check it, then lock.'
-              : `Not finished. Still missing: <strong>${esc(missing.join(', '))}</strong>.`}</p>
+    <p>${done ? 'Everything is answered. Check it, then lock. A locked matchup cannot be changed.'
+              : 'Not finished. Answer the questions marked below.'}</p>
     ${summaries.map(s => `
       <div class="card ${s.complete ? '' : 'incomplete'}">
         <h3>${esc(s.title)}</h3>
@@ -269,13 +337,12 @@ function renderReview() {
         ).join('')}</ul>
       </div>`).join('')}
     <p class="err" id="lockErr"></p>
-    <button id="lock" class="cta" ${done ? '' : 'disabled'}>${done ? 'Lock my answers' : 'Answer everything first'}</button>
-    <div class="nav"><button id="back" class="ghost">Back to the matchups</button></div>`;
-  wireChrome(MATCHUPS[state.index]);
+    <button id="lock" class="cta" ${done ? '' : 'disabled'}>${done ? 'Lock this matchup' : 'Answer everything first'}</button>
+    <div class="nav"><button id="back" class="ghost">Back to the questions</button></div>`;
+  wireChrome(m);
   document.getElementById('back').onclick = () => go('play');
   el.querySelectorAll('button.jump').forEach(b => {
     b.onclick = () => {
-      state.index = MATCHUPS.findIndex(m => m.id === b.dataset.m);
       state.step = QUESTIONS.findIndex(q => q.key === b.dataset.k);
       if (state.step < 0) state.step = 0;
       go('play');
@@ -285,16 +352,17 @@ function renderReview() {
     const btn = document.getElementById('lock');
     btn.disabled = true; btn.textContent = 'Submitting…';
     try {
+      // each matchup is its own row, under the player's id and the matchup's
       await submit({ sessionCode: state.sessionCode, participant: state.participant,
-                     answers: state.draft, submissionId: state.submissionId },
+                     answers: { [m.id]: state.draft[m.id] }, submissionId: lockIdOf(state.submissionId, m.id) },
                     { onAttempt: (n) => { btn.textContent = n === 1 ? 'Submitting…' : `Still submitting… (try ${n})`; } });
-      state.locked = true;
+      if (!isLocked(m.id)) state.lockedIds = [...state.lockedIds, m.id];
       state.surveyReturn = null;
-      go(state.surveySent ? 'done' : 'survey');
+      if (!advance()) go('wait');
     } catch (err) {
       document.getElementById('lockErr').textContent =
         'Did not save. Tap to try again; it cannot double-count.';
-      btn.disabled = false; btn.textContent = 'Lock my answers';
+      btn.disabled = false; btn.textContent = 'Lock this matchup';
     }
   };
 }

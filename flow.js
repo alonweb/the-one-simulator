@@ -10,19 +10,19 @@ export function questionsOf(categories) {
     .map((q, i) => ({ ...q, n: i + 1 }));
 }
 
-/** The question after this one, or null when the last matchup has been answered. */
-export function nextStop(index, step, nMatchups, nQuestions) {
-  if (step + 1 < nQuestions) return { index, step: step + 1 };
-  if (index + 1 < nMatchups) return { index: index + 1, step: 0 };
-  return null;
+/**
+ * The competition a phone should open: the first matchup, in matchup order, that the
+ * presenter has released and this player has not locked. -1 means wait.
+ */
+export function nextCompetition(matchups, released, locked) {
+  const open = new Set(released || []);
+  const done = new Set(locked || []);
+  return matchups.findIndex(m => open.has(m.id) && !done.has(m.id));
 }
 
-/** The question before this one, or null at the very first. */
-export function prevStop(index, step, nQuestions) {
-  if (step > 0) return { index, step: step - 1 };
-  if (index > 0) return { index: index - 1, step: nQuestions - 1 };
-  return null;
-}
+/** Questions step within one competition; null past its last question, or before its first. */
+export function nextQuestion(step, nQuestions) { return step + 1 < nQuestions ? step + 1 : null; }
+export function prevQuestion(step) { return step > 0 ? step - 1 : null; }
 
 /** A question is answered once it carries both a vote and a crowd call. */
 export function isQuestionAnswered(key, answer) {
