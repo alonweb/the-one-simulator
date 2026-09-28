@@ -1,8 +1,8 @@
 # THE ONE — focus group simulator
 
 A throwaway research instrument for one live session. Twenty people play one round of
-THE ONE on their own phones, one matchup at a time as the presenter releases each, answer a
-short survey, and are done; the presenter alone sees the scored board, every player's answers
+THE ONE on their own phones, one matchup at a time as the presenter releases each, then play
+the devices game (`simulator2`), then answer a short survey on its own page; the presenter alone sees the scored board, every player's answers
 and the survey, and can project the board for the room between matchups. The release-by-release
 pacing is for the meeting only; it is not how the product runs a round.
 None of this is production code.
@@ -16,7 +16,9 @@ Spec and plan live in the HumanPatterns project under
 |---|---|
 | `index.html`, `app.js`, `draft.js` | What a participant sees. Answers are held in the browser and sent once, at lock. |
 | `presenter.html`, `presenter.js` | The statistics page, opened with the presenter key: leaderboard, every player's answers, survey, close, export. |
-| `survey.js` | The end-of-game survey: validity and the presenter's table. Pure functions, fully tested. |
+| `survey.html`, `survey-page.js` | The survey, on its own page, answered after both games. |
+| `survey.js` | The survey's validity and the presenter's table. Pure functions, fully tested. |
+| `finish.js` | Each game marks the phone as having finished it; the survey button appears once both are. The two sites share alonweb.github.io, and so its browser storage. |
 | `scoring.js` | Every point in the session. Pure functions, fully tested. |
 | `stats.js` | Crowd result, leaderboard, session statistics. Pure functions, fully tested. |
 | `store.js` | The only code that touches the network. |
@@ -63,9 +65,12 @@ page to one session's rows.
 
 ## The survey
 
-After locking the fifth matchup, a player answers the questions in `SURVEY` (`config.js`), then sees a
-thank-you screen. The menu also offers **Answer the survey** at any point; the game
-resumes where it was, and a survey is sent once per device. Players never see results. Answers land in a `survey` tab the script
+The survey is its own page, `survey.html` (https://alonweb.github.io/the-one-simulator/survey.html),
+answered once a player has finished **both** games: this one and the devices game, `simulator2`.
+Neither game asks it any more. On a phone that has finished both, the thank-you screen of
+whichever game ended second shows **Last step: the survey**; the link also works on its own,
+for the presenter to put on screen. The name is filled in from the games, and a phone sends the
+survey once. Players never see results. The questions are `SURVEY` in `config.js`. Answers land in a `survey` tab the script
 creates on first use, and appear in the presenter page under "The survey". Three question
 types: `scale` (min..max with end labels), `choice` (one of `options`), `text`.
 `required: false` makes a question optional.
@@ -93,10 +98,11 @@ data is a focus group's opinions about photographs, not anything that needs to.
    who has joined and is still playing, so count the room. When the room is in, press
    **Project the board**: the board alone, large, with no answers or survey on it. Esc or
    Close returns to the page. Then release the next matchup.
-5. After the fifth lock a player answers the survey and sees a thank-you screen. Phones never
-   show results. When everyone has locked the fifth: **Close the round**. The page refreshes
-   every 10 seconds.
-6. **Export raw answers** before you close the laptop. The export holds the survey too. Do not edit `config.js` once the
+5. After the fifth lock a player sees a thank-you screen. Phones never show results. When
+   everyone has locked the fifth: **Close the round**. The page refreshes every 10 seconds.
+6. After the devices game, players answer the survey on its own page (see The survey). The
+   answers appear on this presenter page under "The survey".
+7. **Export raw answers** before you close the laptop. The export holds the survey too. Do not edit `config.js` once the
    first person has locked: category keys and matchup ids are the join between a stored
    answer and the reveal, and changing one strands the answers already in the sheet. That file is what the session can be
    re-scored from afterwards, and it is the only copy that does not need the sheet.

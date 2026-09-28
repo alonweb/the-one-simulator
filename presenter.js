@@ -128,7 +128,7 @@ function playerCards(stats, crowd) {
 
 function surveySection() {
   const t = surveyTable(surveyRows, SURVEY);
-  if (!t.rows.length) return `<h2>The survey</h2><p class="note">No survey answers yet. They arrive after each player locks the last matchup.</p>`;
+  if (!t.rows.length) return `<h2>The survey</h2><p class="note">No survey answers yet. They arrive from the survey page, which players open after finishing both games.</p>`;
   return `<h2>The survey — ${t.rows.length} answered</h2>
     <table><tr><th>Name</th>${t.header.map(h => `<th>${esc(h)}</th>`).join('')}</tr>
     ${t.rows.map(r => `<tr><td><strong>${esc(r.participant)}</strong></td>${r.cells.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}

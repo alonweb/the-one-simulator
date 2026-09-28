@@ -33,7 +33,12 @@ export const MATCHUPS = [
 // presenter page shows the whole sheet regardless, and Reset wipes it. Nobody types it.
 export const SESSION_LABEL = 'LIVE1';
 
-// The survey. Players reach it after locking, or from the menu at any time. From Mati's
+// The survey is its own page, offered once a phone has finished both games (finish.js).
+// This game marks itself done under DONE_KEY; SURVEY_URL is where the button leads.
+export const DONE_KEY = 'theone.done.women';
+export const SURVEY_URL = 'survey.html';
+
+// The survey, on survey.html, answered after both games. From Mati's
 // focus-group brief (2026-09-26): record choices and behaviour, not only "yes I would pay".
 // type: 'scale' (min..max), 'choice' (one of options), or 'text'. required defaults to true.
 // `short` is the column heading on the presenter page. Edit freely before the day.
