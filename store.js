@@ -78,7 +78,9 @@ export async function submitSurvey(payload, opts = {}) {
 }
 
 async function send(body, opts = {}) {
-  const attempts = opts.attempts ?? 8;
+  // twelve tries is about two minutes: long enough to outlast Google's limit of roughly 60
+  // sheet writes a minute when a room locks two released matchups in the same moment
+  const attempts = opts.attempts ?? 12;
   const base = opts.baseDelayMs ?? 2000;
   const onAttempt = opts.onAttempt || (() => {});
   let lastError;

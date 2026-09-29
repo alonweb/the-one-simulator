@@ -53,6 +53,13 @@ Spec and plan live in the HumanPatterns project under
    the same submissionId is folded to one row on read. Google refuses requests above
    about 30 at once with an error page, which the phone retries by itself.
    Delete the `REHEARSAL` rows from the sheet afterwards.
+   **The meeting itself:** `N=30 KEY=<presenter key> node meeting-load.mjs` plays it against the
+   real server: 30 phones waiting, releases in waves (1, then 2+3, then 4+5), every phone locking
+   the instant a matchup opens, then 30 surveys, with a presenter page reading throughout. Add
+   `THINK=60` for people taking up to a minute per matchup. Measured 2026-09-28: nothing lost
+   either way; realistic pace needed no retries, the instant case retried a third of the locks
+   of a double release for up to a minute (Google's ~60 writes a minute), which the phone's
+   two minutes of retrying absorbs. Rows are stamped LOADTEST; reset the sheet afterwards.
 6. **Run the tests.** `node --test` from this directory.
 
 ## Session label
