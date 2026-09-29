@@ -1,6 +1,6 @@
-import { MATCHUPS, CATEGORIES, SURVEY, SESSION_LABEL } from './config.js';
+import { MATCHUPS, CATEGORIES, SURVEY, SESSION_LABEL, WAKE } from './config.js';
 import { fetchRows, fetchSurvey, fetchSession, setState, resetSheet, release, mergeByPlayer,
-         normalizeCode } from './store.js';
+         normalizeCode, wake } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { formatCounts, answerRows } from './present-format.js';
 import { crowdResult, sessionStats, contestantStanding, boardTable } from './stats.js';
@@ -104,6 +104,31 @@ function closeProjector() {
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && !projector.hidden) projector.hidden = true; });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !projector.hidden) closeProjector(); });
 document.getElementById('project').onclick = openProjector;
+
+// "Start meeting". An idle server took up to 11 s to answer its first request (2026-09-29), and a
+// player saw a stuck Lock button. This wakes both games' servers, shows how fast each answered,
+// and asks them again every minute while this page is open. It writes nothing, releases nothing.
+const KEEP_AWAKE_MS = 60000;
+let keepAwake = null;
+async function wakeAll() {
+  const results = await Promise.all(WAKE.map(async (s) => ({ label: s.label, r: await wake(s.endpoint, s.code) })));
+  const at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('wakeStatus').innerHTML = results.map(({ label, r }) => r.ok
+    ? `<strong>${esc(label)}</strong>: awake, answered in ${(r.ms / 1000).toFixed(1)} s`
+    : `<strong>${esc(label)}</strong>: not answering (${esc(r.error)}), asking again`).join(' · ')
+    + ` · checked at ${esc(at)}. Kept awake while this page is open.`;
+  return results.every(x => x.r.ok);
+}
+document.getElementById('startMeeting').onclick = async () => {
+  const btn = document.getElementById('startMeeting');
+  btn.disabled = true; btn.classList.add('busy');
+  btn.innerHTML = '<span class="spin" aria-hidden="true"></span>Waking the servers…';
+  const ok = await wakeAll();
+  btn.classList.remove('busy'); btn.disabled = false;
+  btn.textContent = ok ? 'Servers awake · check again' : 'Start meeting · try again';
+  clearInterval(keepAwake);
+  keepAwake = setInterval(wakeAll, KEEP_AWAKE_MS);
+};
 
 function playerCards(stats, crowd) {
   const byId = {};

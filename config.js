@@ -39,6 +39,16 @@ export const MATCHUPS = [
 // presenter page shows the whole sheet regardless, and Reset wipes it. Nobody types it.
 export const SESSION_LABEL = 'LIVE1';
 
+// "Start meeting" on either game's presenter page wakes both games' servers and keeps them awake
+// while the page is open (presenter.js): an idle server took up to 11 s to answer its first
+// request (2026-09-29), and a player saw a stuck Lock button. Each entry is a server and the
+// label its rows carry. The other game's address must match its own config.js.
+export const WAKE = [
+  { label: "Women's game", endpoint: ENDPOINT, code: SESSION_LABEL },
+  { label: 'Devices game', endpoint:
+    'https://script.google.com/macros/s/AKfycbwQKBiQ-Vhjt1WwTgdA5FRKqVZINGj00O6_9owAtIGFy1YQApMpGPdAuZz813OovU0eIg/exec', code: 'DEVICES1' }
+];
+
 // The survey is its own page, offered once a phone has finished both games (finish.js).
 // This game marks itself done under DONE_KEY; SURVEY_URL is where the button leads.
 export const DONE_KEY = 'theone.done.women';
@@ -127,6 +137,7 @@ export const SURVEY_TEXT = {
     optional: 'optional', textPlaceholder: 'A few words', textOptional: 'Optional',
     send: 'Send my answers', incomplete: 'Answer everything first',
     sending: 'Sending…', retrying: (n) => `Still sending… (try ${n})`,
+    sendingNote: 'Sending your answers. This can take up to 10 seconds. Keep this page open.',
     failed: 'Did not save. Tap to try again; it cannot double-count.',
     thanks: 'Thank you!', thanksBody: (name) => `Your survey is in${name ? ', ' + name : ''}.`,
     language: 'Language'
@@ -140,6 +151,7 @@ export const SURVEY_TEXT = {
     optional: 'לא חובה', textPlaceholder: 'כמה מילים', textOptional: 'לא חובה',
     send: 'שליחת התשובות', incomplete: 'יש לענות על כל השאלות',
     sending: 'שולח…', retrying: (n) => `עדיין שולח… (ניסיון ${n})`,
+    sendingNote: 'התשובות נשלחות. זה יכול לקחת עד 10 שניות. נא להשאיר את הדף פתוח.',
     failed: 'התשובות לא נשמרו. אפשר ללחוץ שוב, הן לא ייספרו פעמיים.',
     thanks: 'תודה רבה!', thanksBody: (name) => `השאלון שלך התקבל${name ? ', ' + name : ''}.`,
     language: 'שפה'

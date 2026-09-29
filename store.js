@@ -151,6 +151,24 @@ export async function fetchSession(sessionCode) {
 }
 
 /**
+ * Wakes a server and times it. An idle Apps Script took up to 11 s to answer its first request
+ * (measured 2026-09-29), and a lock sent to a sleeping server looked stuck. This is the state
+ * read every waiting phone makes: it writes nothing and needs no key. It never throws.
+ */
+export async function wake(endpoint, sessionCode, now = () => Date.now()) {
+  const t0 = now();
+  try {
+    const res = await fetch(`${endpoint}?what=state&code=${encodeURIComponent(normalizeCode(sessionCode))}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data || data.ok !== true) throw new Error((data && data.error) || 'no answer');
+    return { ok: true, ms: now() - t0 };
+  } catch (err) {
+    return { ok: false, ms: now() - t0, error: String((err && err.message) || err) };
+  }
+}
+
+/**
  * The statistics page. The server only answers with the presenter key, because the
  * participant link is public and these are everyone's answers. A refusal is thrown,
  * not swallowed, so the presenter sees "wrong presenter key" rather than an empty room.

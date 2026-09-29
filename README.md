@@ -108,6 +108,11 @@ data is a focus group's opinions about photographs, not anything that needs to.
 ## On the day
 
 1. Open `presenter.html`, enter the presenter key and press **Enter**. The statistics page opens; **Log out** takes you back.
+   Then press **Start meeting**, before the players arrive. It wakes both games' servers and
+   shows how fast each answered: after a quiet spell a server took up to 11 seconds to answer
+   (2026-09-29), and a player saw a stuck Lock button. It keeps both awake while the page is
+   open, and releases nothing. Phones also wake their server when the review screen or the
+   survey opens, and the Lock and Send buttons show "Saving…" with a turning ring while they wait.
 2. Participants open the participant link and enter their name. Their phone waits until you
    release a matchup.
 3. **Release** a matchup in the Competitions strip. Every waiting phone opens it within about

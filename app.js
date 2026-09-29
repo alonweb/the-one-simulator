@@ -1,5 +1,5 @@
-import { MATCHUPS, CATEGORIES, SESSION_LABEL, DONE_KEY, SURVEY_URL } from './config.js';
-import { submit, fetchSession, lockIdOf } from './store.js';
+import { MATCHUPS, CATEGORIES, SESSION_LABEL, DONE_KEY, SURVEY_URL, ENDPOINT } from './config.js';
+import { submit, fetchSession, lockIdOf, wake } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { summariseMatchup } from './present-format.js';
 import { markDone, clearDone, finishedAll } from './finish.js';
@@ -356,6 +356,14 @@ function lightbox(c, key) {
   document.body.appendChild(box);
 }
 
+let warmedFor = null;
+
+/** A button that is saving: it stays bright and turns, so a slow server never reads as a stuck page. */
+function busy(btn, text) {
+  btn.classList.add('busy');
+  btn.innerHTML = `<span class="spin" aria-hidden="true"></span>${esc(text)}`;
+}
+
 function renderReview() {
   const m = MATCHUPS[state.index];
   if (!m || isLocked(m.id)) return go('wait');
@@ -376,8 +384,11 @@ function renderReview() {
       </div>`).join('')}
     <p class="err" id="lockErr"></p>
     <button id="lock" class="cta" ${done ? '' : 'disabled'}>${done ? 'Lock this matchup' : 'Answer everything first'}</button>
+    <p class="note" id="lockNote" role="status" hidden>Saving your answers. This can take up to 10 seconds. Keep this page open.</p>
     <div class="nav"><button id="back" class="ghost">Back to the questions</button></div>`;
   wireChrome(m);
+  // wake the server while the player reads their answers, so the lock does not wait for it
+  if (warmedFor !== m.id) { warmedFor = m.id; wake(ENDPOINT, SESSION_LABEL); }
   document.getElementById('back').onclick = () => go('play');
   el.querySelectorAll('button.jump').forEach(b => {
     b.onclick = () => {
@@ -388,17 +399,20 @@ function renderReview() {
   });
   document.getElementById('lock').onclick = async () => {
     const btn = document.getElementById('lock');
-    btn.disabled = true; btn.textContent = 'Submitting…';
+    const note = document.getElementById('lockNote');
+    btn.disabled = true; note.hidden = false;
+    busy(btn, 'Saving…');
     try {
       // each matchup is its own row, under the player's id and the matchup's
       await submit({ sessionCode: state.sessionCode, participant: state.participant,
                      answers: { [m.id]: state.draft[m.id] }, submissionId: lockIdOf(state.submissionId, m.id) },
-                    { onAttempt: (n) => { btn.textContent = n === 1 ? 'Submitting…' : `Still submitting… (try ${n})`; } });
+                    { onAttempt: (n) => busy(btn, n === 1 ? 'Saving…' : `Still saving… (try ${n})`) });
       if (!isLocked(m.id)) state.lockedIds = [...state.lockedIds, m.id];
       if (!advance()) go('wait');
     } catch (err) {
       document.getElementById('lockErr').textContent =
         'Did not save. Tap to try again; it cannot double-count.';
+      btn.classList.remove('busy'); note.hidden = true;
       btn.disabled = false; btn.textContent = 'Lock this matchup';
     }
   };

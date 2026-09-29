@@ -61,3 +61,25 @@ test('parseRows keeps the first row per submissionId, so a retried lock counts o
   assert.deepEqual(rows.map(r => r.submissionId), ['s1', 's2']);
   assert.deepEqual(rows[0].answers, { m1: {} });
 });
+
+// "Start meeting" and the review screen wake the server before a lock needs it: an idle Apps
+// Script took up to 11 s to answer its first request (measured 2026-09-29).
+test('wake reads the public state and reports how long the server took', async (t) => {
+  const { wake } = await import('./store.js');
+  const asked = [];
+  t.mock.method(globalThis, 'fetch', async (url) => { asked.push(url); return { ok: true, json: async () => ({ ok: true, state: 'open', released: [] }) }; });
+  let clock = 1000;
+  const r = await wake('https://example.test/exec', ' live1 ', () => (clock += 700));
+  assert.deepEqual(r, { ok: true, ms: 700 });
+  assert.deepEqual(asked, ['https://example.test/exec?what=state&code=LIVE1']);
+});
+
+test('wake never throws: a server that does not answer is reported, not raised', async (t) => {
+  const { wake } = await import('./store.js');
+  t.mock.method(globalThis, 'fetch', async () => { throw new Error('offline'); });
+  const r = await wake('https://example.test/exec', 'LIVE1');
+  assert.equal(r.ok, false);
+  assert.match(r.error, /offline/);
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => { throw new Error('an HTML error page'); } }));
+  assert.equal((await wake('https://example.test/exec', 'LIVE1')).ok, false);
+});
