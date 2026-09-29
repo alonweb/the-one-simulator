@@ -31,7 +31,7 @@ function answers() {
 function survey() {
   const out = {};
   for (const q of SURVEY) {
-    out[q.key] = q.type === 'scale' ? 1 + Math.floor(Math.random() * 5)
+    out[q.key] = q.type === 'scale' ? q.min + Math.floor(Math.random() * (q.max - q.min + 1))
       : q.type === 'choice' ? pick(q.options) : `load test ${run}`;
   }
   return out;

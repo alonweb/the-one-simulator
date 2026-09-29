@@ -1,13 +1,15 @@
-import { SURVEY, SESSION_LABEL } from './config.js';
+import { SURVEY, SURVEY_TEXT, SESSION_LABEL } from './config.js';
 import { submitSurvey } from './store.js';
 import { escapeHtml as esc } from './html.js';
-import { setSurveyAnswer, isSurveyComplete } from './survey.js';
+import { setSurveyAnswer, isSurveyComplete, localize, pickLanguage, LANGUAGES } from './survey.js';
 import { lastName } from './finish.js';
 
 // The survey page, answered once both games are done. It keeps its own saved state, apart
 // from either game's, so a reload keeps the answers and a phone sends the survey once.
+// v2: the final questions (2026-09-29); a phone that sent the earlier set answers these too.
 const el = document.getElementById('screen');
-const KEY = 'theone.survey.v1';
+const KEY = 'theone.survey.v2';
+const LANG_KEY = 'theone.lang';
 
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; }
@@ -19,49 +21,85 @@ const state = load() || {
   name: lastName(), answers: {}, sent: false
 };
 
-const chrome = () => `<header class="top"><h1 class="logo">THE ONE <span class="badge">1</span></h1></header>`;
+let savedLang = null;
+try { savedLang = localStorage.getItem(LANG_KEY); } catch (e) {}
+let lang = pickLanguage({
+  url: new URLSearchParams(location.search).get('lang'), saved: savedLang,
+  browser: navigator.languages || [navigator.language]
+});
+const T = () => SURVEY_TEXT[lang] || SURVEY_TEXT.en;
+const NAMES = { en: 'English', he: 'עברית' };
+
+function setLanguage(next) {
+  lang = next;
+  try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+  const y = window.scrollY; render(); window.scrollTo(0, y);
+}
+
+// the wordmark stays left to right in either language; the switch names each language in itself
+const chrome = () => `<header class="top has-lang"><h1 class="logo" dir="ltr">THE ONE <span class="badge">1</span></h1>
+  <div class="lang" role="group" aria-label="${esc(T().language)}">${LANGUAGES.map(l =>
+    `<button type="button" lang="${l}" data-lang="${l}" aria-pressed="${l === lang}">${NAMES[l]}</button>`).join('')}</div></header>`;
 const ready = () => !!state.name.trim() && isSurveyComplete(state.answers, SURVEY);
 
 function field(q) {
   const a = state.answers;
+  const w = localize(q, lang);
   if (q.type === 'scale') {
     const min = q.min ?? 1, max = q.max ?? 5;
     const btns = [];
     for (let n = min; n <= max; n++) {
       btns.push(`<button type="button" class="ghost pick ${a[q.key] === n ? 'on' : ''}" data-q="${q.key}" data-v="${n}">${n}</button>`);
     }
-    return `<div class="scale">${btns.join('')}</div>
-      <div class="ends"><span>${esc(q.low || '')}</span><span>${esc(q.high || '')}</span></div>`;
+    // more than five numbers go on two rows, so each stays big enough to tap
+    return `<p class="hint">${esc(T().scaleHint(min, max))}</p>
+      <div class="scale ${max - min + 1 > 5 ? 'wide' : ''}">${btns.join('')}</div>
+      <div class="ends">${w.low ? `<span>${min} = ${esc(w.low)}</span>` : ''}${w.high ? `<span>${max} = ${esc(w.high)}</span>` : ''}</div>`;
   }
   if (q.type === 'choice') {
-    return `<div class="choice">${(q.options || []).map(o =>
-      `<button type="button" class="ghost pick ${a[q.key] === o ? 'on' : ''}" data-q="${q.key}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+    return `<div class="choice">${w.options.map(o =>
+      `<button type="button" class="ghost pick ${a[q.key] === o.value ? 'on' : ''}" data-q="${q.key}" data-v="${esc(o.value)}">${esc(o.text)}</button>`).join('')}</div>`;
   }
-  return `<textarea class="text" data-q="${q.key}" rows="3" placeholder="${q.required === false ? 'Optional' : 'A few words'}">${esc(a[q.key] || '')}</textarea>`;
+  return `<textarea class="text" dir="auto" data-q="${q.key}" rows="3" placeholder="${esc(q.required === false ? T().textOptional : T().textPlaceholder)}">${esc(a[q.key] || '')}</textarea>`;
+}
+
+function page() {
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  document.title = T().pageTitle;
+}
+
+function bindChrome() {
+  el.querySelectorAll('.lang button').forEach(b => {
+    b.onclick = () => { if (b.dataset.lang !== lang) setLanguage(b.dataset.lang); };
+  });
 }
 
 function renderSent() {
   el.innerHTML = `${chrome()}
-    <div class="banner"><strong>Thank you</strong>Your survey is in${state.name ? ', ' + esc(state.name) : ''}. That is everything.</div>`;
+    <div class="banner"><strong>${esc(T().thanks)}</strong>${esc(T().thanksBody(state.name))}</div>`;
+  bindChrome();
 }
 
 function syncButton() {
   const btn = document.getElementById('send');
   const ok = ready();
-  btn.disabled = !ok; btn.textContent = ok ? 'Send my answers' : 'Answer everything first';
+  btn.disabled = !ok; btn.textContent = ok ? T().send : T().incomplete;
 }
 
 function render() {
+  page();
   if (state.sent) return renderSent();
   el.innerHTML = `${chrome()}
-    <div class="banner"><strong>Survey</strong>A few questions about both games.</div>
-    <div class="card survey"><h3>Your name</h3>
-      <input id="name" value="${esc(state.name)}" placeholder="The name you played under"></div>
+    <div class="banner"><strong>${esc(T().heading)}</strong>${esc(T().intro)}</div>
+    <div class="card survey"><h3>${esc(T().name)}</h3>
+      <input id="name" dir="auto" value="${esc(state.name)}" placeholder="${esc(T().namePlaceholder)}"></div>
     ${SURVEY.map((q, i) => `<div class="card survey">
-      <h3>${i + 1}. ${esc(q.label)}${q.required === false ? ' <small>(optional)</small>' : ''}</h3>
+      <h3>${i + 1}. ${esc(localize(q, lang).label)}${q.required === false ? ` <small>(${esc(T().optional)})</small>` : ''}</h3>
       ${field(q)}</div>`).join('')}
     <p class="err" id="surveyErr"></p>
-    <button id="send" class="cta" ${ready() ? '' : 'disabled'}>${ready() ? 'Send my answers' : 'Answer everything first'}</button>`;
+    <button id="send" class="cta" ${ready() ? '' : 'disabled'}>${esc(ready() ? T().send : T().incomplete)}</button>`;
+  bindChrome();
 
   // typing is handled without redrawing, which would steal the keyboard
   document.getElementById('name').oninput = (e) => { state.name = e.target.value; save(); syncButton(); };
@@ -78,16 +116,17 @@ function render() {
   });
   document.getElementById('send').onclick = async () => {
     const btn = document.getElementById('send');
-    btn.disabled = true; btn.textContent = 'Sending…';
+    btn.disabled = true; btn.textContent = T().sending;
     try {
+      // the answers are stored in English; `lang` records which language the player read them in
       await submitSurvey({ sessionCode: SESSION_LABEL, participant: state.name.trim(),
-                           answers: state.answers, submissionId: state.id },
-                         { onAttempt: (n) => { btn.textContent = n === 1 ? 'Sending…' : `Still sending… (try ${n})`; } });
+                           answers: { ...state.answers, lang }, submissionId: state.id },
+                         { onAttempt: (n) => { btn.textContent = n === 1 ? T().sending : T().retrying(n); } });
       state.sent = true; save();
       window.scrollTo(0, 0); render();
     } catch (err) {
-      document.getElementById('surveyErr').textContent = 'Did not save. Tap to try again; it cannot double-count.';
-      btn.disabled = false; btn.textContent = 'Send my answers';
+      document.getElementById('surveyErr').textContent = T().failed;
+      btn.disabled = false; btn.textContent = T().send;
     }
   };
 }

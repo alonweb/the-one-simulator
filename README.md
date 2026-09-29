@@ -77,10 +77,19 @@ answered once a player has finished **both** games: this one and the devices gam
 Neither game asks it any more. On a phone that has finished both, the thank-you screen of
 whichever game ended second shows **Last step: the survey**; the link also works on its own,
 for the presenter to put on screen. The name is filled in from the games, and a phone sends the
-survey once. Players never see results. The questions are `SURVEY` in `config.js`. Answers land in a `survey` tab the script
+survey once. Players never see results. The questions are `SURVEY` in `config.js`: THE ONE
+Final Survey, ten questions, from Alon's English and Hebrew documents (2026-09-29).
+
+The page is in **English and Hebrew**, with a switch at the top; Hebrew turns the page right
+to left. It opens in the language the player chose before, else the phone's language, else
+English; a link ending `?lang=he` or `?lang=en` opens it in that language. Each question's
+Hebrew sits beside it in `config.js` under `he`, the rest of the page's wording in
+`SURVEY_TEXT`. Whatever the language, an answer is stored as the English option, so the
+presenter's table reads the same for everyone; the stored answers also carry `lang`, the
+language the player read them in. Answers land in a `survey` tab the script
 creates on first use, and appear in the presenter page under "The survey". Three question
-types: `scale` (min..max with end labels), `choice` (one of `options`), `text`.
-`required: false` makes a question optional.
+types: `scale` (min..max, `low`/`high` explaining the two ends), `choice` (one of `options`),
+`text`. `required: false` makes a question optional.
 
 ## What the key protects, and what it does not
 
