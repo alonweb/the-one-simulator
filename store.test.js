@@ -43,8 +43,9 @@ test('a state write without a session code is refused', () => {
 
 test('only the two states the presenter can set are accepted', () => {
   assert.equal(buildStateWrite('X1', 'closed', 'k').state, 'closed');
-  assert.throws(() => buildStateWrite('X1', 'open', 'k'), /closed or revealed/i);
-  assert.throws(() => buildStateWrite('X1', 'nonsense', 'k'), /closed or revealed/i);
+  // reopening is allowed since 2026-09-29: a closed round had no way back but a reset
+  assert.equal(buildStateWrite('X1', 'open', 'k').state, 'open');
+  assert.throws(() => buildStateWrite('X1', 'nonsense', 'k'), /open, closed or revealed/i);
 });
 
 test('a reset carries the key and nothing else, and refuses to leave without one', () => {
@@ -82,4 +83,27 @@ test('wake never throws: a server that does not answer is reported, not raised',
   assert.match(r.error, /offline/);
   t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => { throw new Error('an HTML error page'); } }));
   assert.equal((await wake('https://example.test/exec', 'LIVE1')).ok, false);
+});
+
+// The activity log names the presenter device behind each release, close, reopen and reset.
+test('presenter writes carry the device that made them, when it is given', async () => {
+  const { buildReleaseWrite } = await import('./store.js');
+  assert.equal(buildStateWrite('X1', 'open', 'k', 'Mac·ab12').by, 'Mac·ab12');
+  assert.equal(buildReleaseWrite('X1', 'm1', 'k', 'Mac·ab12').by, 'Mac·ab12');
+  assert.equal(buildResetWrite('k', 'X1', 'Mac·ab12').by, 'Mac·ab12');
+  assert.equal('by' in buildStateWrite('X1', 'open', 'k'), false);
+});
+
+test('fetchLog returns the log, and null from a server too old to keep one', async (t) => {
+  const { fetchLog } = await import('./store.js');
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    assert.match(url, /what=log&key=k$/);
+    return { ok: true, json: async () => ({ ok: true, log: [{ at: 't', what: 'reopen' }] }) };
+  });
+  assert.deepEqual(await fetchLog('k'), [{ at: 't', what: 'reopen' }]);
+  // an old server reads what=log as the answers, which carry no log
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ ok: true, rows: [] }) }));
+  assert.equal(await fetchLog('k'), null);
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ ok: false, error: 'wrong presenter key' }) }));
+  await assert.rejects(fetchLog('k'), /wrong presenter key/);
 });

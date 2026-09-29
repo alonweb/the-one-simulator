@@ -61,3 +61,58 @@ test('reset wipes the releases too, and the next read sees it', () => {
   assert.equal(s.post({ kind: 'reset', key: 'k', sessionCode: 'LIVE1' }).ok, true);
   assert.deepEqual(s.get({ what: 'state', code: 'LIVE1' }), { ok: true, state: 'open', released: [] });
 });
+
+// 2026-09-29: a round was found closed and nothing said when or by whom, and a closed round
+// could only come back through a reset that wipes every answer.
+const K = (x) => ({ key: 'k', sessionCode: 'LIVE1', ...x });
+
+test('a closed round can be reopened, keeping its releases, and takes locks again', () => {
+  const s = loadServer();
+  s.post(K({ kind: 'release', matchupId: 'm1' }));
+  assert.equal(s.post(lock('p1', 'm1')).ok, true);
+  s.post(K({ kind: 'state', state: 'closed' }));
+  assert.equal(s.post(lock('p2', 'm1')).ok, false);
+  assert.equal(s.post(K({ kind: 'state', state: 'open' })).ok, true);
+  assert.deepEqual(s.get({ what: 'state', code: 'LIVE1' }), { ok: true, state: 'open', released: ['m1'] });
+  assert.equal(s.post(lock('p2', 'm1')).ok, true);
+  assert.deepEqual(s.get({ what: 'rows', key: 'k' }).rows.map(r => r.submissionId), ['p1~m1', 'p2~m1']);
+});
+
+test('reopening needs the presenter key, and a made-up state is refused', () => {
+  const s = loadServer();
+  s.post(K({ kind: 'state', state: 'closed' }));
+  assert.equal(s.post({ kind: 'state', sessionCode: 'LIVE1', state: 'open', key: 'wrong' }).ok, false);
+  assert.equal(s.get({ what: 'state', code: 'LIVE1' }).state, 'closed');
+  assert.equal(s.post(K({ kind: 'state', state: 'nonsense' })).ok, false);
+});
+
+test('the log records every presenter action with its device, newest first, and survives a reset', () => {
+  const s = loadServer();
+  s.post(K({ kind: 'release', matchupId: 'm1', by: 'Mac·a1' }));
+  s.post(K({ kind: 'state', state: 'closed', by: 'iPhone·b2' }));
+  s.post(K({ kind: 'state', state: 'open', by: 'Mac·a1' }));
+  s.post(K({ kind: 'reset', by: 'Mac·a1' }));
+  s.post({ kind: 'state', sessionCode: 'LIVE1', state: 'closed', key: 'wrong', by: 'Win·c3' });
+  const log = s.get({ what: 'log', key: 'k' }).log;
+  assert.deepEqual(log.map(e => [e.what, e.detail, e.by]), [
+    ['refused', 'closed: wrong presenter key', 'Win·c3'],
+    ['reset', '', 'Mac·a1'],
+    ['reopen', '', 'Mac·a1'],
+    ['closed', '', 'iPhone·b2'],
+    ['release', 'm1', 'Mac·a1']
+  ]);
+  assert.ok(log.every(e => e.sessionCode === 'LIVE1' && e.at));
+});
+
+test('the log is the presenter\'s only: no key, no log', () => {
+  const s = loadServer();
+  s.post(K({ kind: 'release', matchupId: 'm1' }));
+  assert.equal(s.get({ what: 'log' }).ok, false);
+  assert.equal(s.get({ what: 'log', key: 'wrong' }).ok, false);
+});
+
+test('players locking do not write to the log', () => {
+  const s = loadServer();
+  s.post(lock('p1', 'm1'));
+  assert.deepEqual(s.get({ what: 'log', key: 'k' }).log, []);
+});

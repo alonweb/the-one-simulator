@@ -55,6 +55,15 @@
   .proj-head { display: flex; align-items: center; gap: 24px; margin-bottom: 2vh; }
   .proj-head .logo { color: var(--yellow); font-size: clamp(28px, 4vw, 56px); }
   .proj-head .logo .badge { color: var(--ink); }
+  /* the round status, large at the top of the page (presenter.js roundBanner) */
+  .round { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 14px 0;
+           padding: 14px 20px; border-radius: 18px; border: 3px solid; font-size: 17px; }
+  .round strong { font-size: 24px; letter-spacing: .02em; }
+  .round.open { background: #E3F6E3; border-color: #1B7F2E; color: #0E4D1B; }
+  .round.closed { background: #FFE3E0; border-color: #C62828; color: #7A1010; }
+  .round.unknown { background: var(--grey-2); border-color: var(--muted); }
+  .round .cta { width: auto; min-width: 0; margin: 0 0 0 auto; padding: 0 22px; }
+  table.log tr.flag td { background: #FFF1EF; }
   .proj-head p { font-size: clamp(18px, 2.2vw, 32px); font-weight: 800; margin: 0; }
   .proj-head button { width: auto; margin: 0 0 0 auto; min-height: 40px; padding: 0 20px; }
   .proj-board { list-style: none; padding: 0; margin: 0; }
@@ -93,6 +102,7 @@
     </div>
     <p class="note" id="wakeStatus" role="status">Press <strong>Start meeting</strong> before the players arrive. It wakes both games' servers, which take up to 10 seconds to answer after a quiet spell, so the first locks do not wait. It releases nothing.</p>
     <div id="out"></div>
+    <div id="activity"></div>
   </div>
   <div id="projector" hidden></div>
   <script type="module" src="presenter.js"></script>

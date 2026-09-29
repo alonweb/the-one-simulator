@@ -100,40 +100,47 @@ async function send(body, opts = {}) {
   throw lastError;
 }
 
-/** The only two states a presenter sets. A round starts open; nobody sets it back. */
-export const PRESENTER_STATES = ['closed', 'revealed'];
+/**
+ * The states a presenter sets. A round starts open. Since 2026-09-29 a closed round can be
+ * reopened: before that, the only way back from a mistaken close was a reset, which wipes every
+ * answer.
+ */
+export const PRESENTER_STATES = ['open', 'closed', 'revealed'];
+
+/** The presenter device behind a write, for the activity log; left out when not given. */
+const withBy = (w, by) => (String(by == null ? '' : by).trim() ? { ...w, by: String(by).trim() } : w);
 
 /**
  * A state write, checked before it leaves the page.
  *
- * Closing a round and revealing the results are the two irreversible acts in a session,
- * and the endpoint is in every participant's browser. The key is what separates the
+ * Closing, reopening and revealing are the presenter's acts, and the endpoint is in every
+ * participant's browser. The key is what separates the
  * presenter from everyone holding the same link. It lives in the server's Script
  * Properties and on the presenter's own device, never in this repository.
  */
-export function buildStateWrite(sessionCode, state, key) {
+export function buildStateWrite(sessionCode, state, key, by) {
   const code = normalizeCode(sessionCode);
   if (!code) throw new Error('A session code is needed.');
-  if (!PRESENTER_STATES.includes(state)) throw new Error('The state must be closed or revealed.');
+  if (!PRESENTER_STATES.includes(state)) throw new Error('The state must be open, closed or revealed.');
   if (!String(key == null ? '' : key).trim()) throw new Error('The presenter key is needed.');
-  return { kind: 'state', sessionCode: code, state, key: String(key).trim() };
+  return withBy({ kind: 'state', sessionCode: code, state, key: String(key).trim() }, by);
 }
 
-export async function setState(sessionCode, state, key) {
-  return post(buildStateWrite(sessionCode, state, key));
+export async function setState(sessionCode, state, key, by) {
+  return post(buildStateWrite(sessionCode, state, key, by));
 }
 
 /** A release, checked before it leaves the page. Releasing cannot be taken back. */
-export function buildReleaseWrite(sessionCode, matchupId, key) {
+export function buildReleaseWrite(sessionCode, matchupId, key, by) {
   const code = normalizeCode(sessionCode);
   if (!code) throw new Error('A session code is needed.');
   if (!String(matchupId == null ? '' : matchupId).trim()) throw new Error('A matchup is needed.');
   if (!String(key == null ? '' : key).trim()) throw new Error('The presenter key is needed.');
-  return { kind: 'release', sessionCode: code, matchupId: String(matchupId).trim(), key: String(key).trim() };
+  return withBy({ kind: 'release', sessionCode: code, matchupId: String(matchupId).trim(), key: String(key).trim() }, by);
 }
 
-export async function release(sessionCode, matchupId, key) {
-  return post(buildReleaseWrite(sessionCode, matchupId, key));
+export async function release(sessionCode, matchupId, key, by) {
+  return post(buildReleaseWrite(sessionCode, matchupId, key, by));
 }
 
 /** The round state and the released competitions. A server without releases has none. */
@@ -186,14 +193,25 @@ export async function fetchRows(sessionCode, key) { return fetchGated('rows', se
 export async function fetchSurvey(sessionCode, key) { return fetchGated('survey', sessionCode, key); }
 
 /** The wipe, checked before it leaves the page. It empties every tab of the sheet. */
-export function buildResetWrite(key, sessionCode) {
+export function buildResetWrite(key, sessionCode, by) {
   if (!String(key == null ? '' : key).trim()) throw new Error('The presenter key is needed.');
   const w = { kind: 'reset', key: String(key).trim() };
   // the label lets the server drop its cached releases at once instead of seconds later
   if (normalizeCode(sessionCode)) w.sessionCode = normalizeCode(sessionCode);
-  return w;
+  return withBy(w, by);
 }
 
-export async function resetSheet(key, sessionCode) {
-  return post(buildResetWrite(key, sessionCode));
+export async function resetSheet(key, sessionCode, by) {
+  return post(buildResetWrite(key, sessionCode, by));
+}
+
+/**
+ * The activity log, newest first: every release, close, reopen and reset, and the device that
+ * did it. null means the server is older than the log (it reads what=log as the answers).
+ */
+export async function fetchLog(key) {
+  const res = await fetch(`${ENDPOINT}?what=log&key=${encodeURIComponent(String(key == null ? '' : key).trim())}`);
+  const data = await res.json();
+  if (!data || data.ok !== true) throw new Error((data && data.error) || 'the server refused it');
+  return Array.isArray(data.log) ? data.log : null;
 }

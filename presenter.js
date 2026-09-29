@@ -1,6 +1,6 @@
 import { MATCHUPS, CATEGORIES, SURVEY, SESSION_LABEL, WAKE } from './config.js';
 import { fetchRows, fetchSurvey, fetchSession, setState, resetSheet, release, mergeByPlayer,
-         normalizeCode, wake } from './store.js';
+         normalizeCode, wake, fetchLog } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { formatCounts, answerRows } from './present-format.js';
 import { crowdResult, sessionStats, contestantStanding, boardTable } from './stats.js';
@@ -47,6 +47,56 @@ function buildCrowd(rows, matchups) {
 
 const numberOf = (m) => MATCHUPS.indexOf(m) + 1;
 const pair = (m) => `<img class="thumb" src="${esc(m.a.photo)}" alt="">${esc(m.a.name)} v <img class="thumb" src="${esc(m.b.photo)}" alt="">${esc(m.b.name)}`;
+
+// Which presenter device did what, for the activity log: its kind and a short random mark kept
+// in this browser. Both games live on alonweb.github.io, so a device carries one mark in both.
+const DEVICE = (() => {
+  const ua = navigator.userAgent;
+  const kind = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android'
+    : /Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'Device';
+  let mark = null;
+  try { mark = localStorage.getItem('theone.presenterDevice'); } catch (e) {}
+  if (!mark) {
+    mark = Math.random().toString(36).slice(2, 6);
+    try { localStorage.setItem('theone.presenterDevice', mark); } catch (e) {}
+  }
+  return `${kind}·${mark}`;
+})();
+
+/** The round, large, at the top: open, or closed with the way back. Phones treat anything but open as closed. */
+function roundBanner(state) {
+  if (LEGACY_VIEW) return '';
+  if (state === 'open') {
+    return `<div class="round open"><strong>Round is OPEN</strong><span>Phones play every released matchup and lock it.</span></div>`;
+  }
+  if (state === 'unknown') {
+    return `<div class="round unknown"><strong>Round status unknown</strong><span>The server did not answer. This page asks again every 10 seconds.</span></div>`;
+  }
+  return `<div class="round closed"><strong>Round is CLOSED</strong><span>Phones show "Closed" and cannot lock. Locked answers are safe.</span>
+    <button class="cta" data-reopen>Reopen the round</button></div>`;
+}
+
+const WHAT = { closed: 'Closed the round', reopen: 'Reopened the round', reset: 'Reset the sheet', revealed: 'Revealed the results' };
+/** Every presenter action, newest first, with the device that did it. Reset never clears it. */
+function activitySection(log) {
+  const head = `<h2>Activity log</h2>`;
+  if (log === undefined) return `${head}<p class="note">Could not read the log just now. This page asks again every 10 seconds.</p>`;
+  if (log === null) return `${head}<p class="warn">The server is the old version and keeps no log. Paste the new apps-script.gs into Apps Script and deploy a new version.</p>`;
+  const when = (at) => { const d = new Date(at);
+    return isNaN(d) ? String(at) : d.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
+  const what = (e) => {
+    if (e.what === 'release') { const m = MATCHUPS.find(x => x.id === e.detail);
+      return m ? `Released matchup ${numberOf(m)}, ${m.a.name} v ${m.b.name}` : `Released ${e.detail}`; }
+    if (e.what === 'refused') return `Refused: ${e.detail}`;
+    return WHAT[e.what] || e.what;
+  };
+  return `${head}<p class="note">Every release, close, reopen and reset, newest first, with the device that did it.
+      This device is <strong>${esc(DEVICE)}</strong>. Reset does not clear the log.</p>
+    ${log.length ? `<table class="log"><tr><th>When</th><th>What</th><th>Session</th><th>By</th></tr>
+      ${log.slice(0, 60).map(e => `<tr class="${e.what === 'closed' || e.what === 'reset' || e.what === 'refused' ? 'flag' : ''}"><td>${esc(when(e.at))}</td><td>${esc(what(e))}</td>
+        <td>${esc(e.sessionCode)}</td><td>${esc(e.by || 'unknown')}${e.by === DEVICE ? ' (this device)' : ''}</td></tr>`).join('')}</table>`
+      : '<p class="note">Nothing yet.</p>'}`;
+}
 
 function competitions(released, allCrowd) {
   return `<h2>Competitions</h2>
@@ -173,6 +223,9 @@ async function refresh() {
     // the survey tab is created by the first answer; a missing one is not an error
     surveyRows = await fetchSurvey(CODE, key()).catch(() => []);
     const session = await fetchSession(SESSION_LABEL).catch(() => ({ state: 'unknown', released: [] }));
+    // undefined: the read failed this time; null: the server is older than the log
+    const activity = await fetchLog(key()).catch(() => undefined);
+    document.getElementById('activity').innerHTML = activitySection(activity);
     live = LEGACY_VIEW ? MATCHUPS : MATCHUPS.filter(m => session.released.includes(m.id));
     const allCrowd = buildCrowd(players, MATCHUPS);
     const crowd = buildCrowd(players, live);
@@ -185,19 +238,19 @@ async function refresh() {
     const pending = CATEGORIES.filter(c => c.needsReplacement);
     const warning = pending.length
       ? `<p class="warn">${pending.map(c => c.label).join(' and ')} still need replacing in config.js — they are judged from video, and there is none for this session.</p>` : '';
-    const header = `<p>${CODE ? `Showing session <strong>${esc(CODE)}</strong> only. ` : 'Everything in the sheet. '}Round is <strong>${session.state}</strong>. Players who have locked something: <strong>${players.length}</strong>. Survey answered: <strong>${surveyRows.length}</strong>.</p>`;
+    const header = `<p>${CODE ? `Showing session <strong>${esc(CODE)}</strong> only. ` : 'Everything in the sheet. '}Players who have locked something: <strong>${players.length}</strong>. Survey answered: <strong>${surveyRows.length}</strong>.</p>`;
     const strip = LEGACY_VIEW
       ? '<p class="note">An older session: every matchup is counted, and releases apply only to the live session.</p>'
       : competitions(session.released, allCrowd);
 
     if (!live.length || !board.length) {
-      out.innerHTML = `${warning}${header}${strip}${boardSection()}${surveyRows.length ? surveySection() : ''}
+      out.innerHTML = `${roundBanner(session.state)}${warning}${header}${strip}${boardSection()}${surveyRows.length ? surveySection() : ''}
         <p class="note">This updates itself every 10 seconds.</p>`;
       return;
     }
 
     out.innerHTML = `
-      ${warning}${header}${strip}${boardSection()}
+      ${roundBanner(session.state)}${warning}${header}${strip}${boardSection()}
       <p>Exact category hits: ${(stats.exactRate * 100).toFixed(1)}%.
          Average error predicting the room: ${stats.meanAbsoluteError.toFixed(1)} points.
          ${stats.ties.length ? 'Tied matchups: ' + stats.ties.join(', ') : 'No ties.'}</p>
@@ -254,6 +307,23 @@ async function refresh() {
 
 // the strip is redrawn on every refresh, so its buttons are handled here, once
 out.addEventListener('click', async (e) => {
+  const reopen = e.target.closest('[data-reopen]');
+  if (reopen) {
+    if (!confirm('Reopen the round? Phones showing "Closed" go back to waiting within seconds and can lock again. Answers already locked are kept.')) return;
+    reopen.disabled = true; reopen.textContent = 'Reopening…';
+    try {
+      const r = await setState(SESSION_LABEL, 'open', key(), DEVICE);
+      if (!r || r.ok !== true) throw new Error((r && r.error) || 'the server refused it');
+    } catch (err) {
+      reopen.disabled = false; reopen.textContent = 'Reopen the round';
+      alert(/must be closed or revealed/.test(err.message)
+        ? 'The server is still the old version, which cannot reopen a round. Paste the new apps-script.gs into Apps Script and deploy a new version (README, "Deploy the server"). Until then only Reset the sheet reopens it, and that wipes every answer.'
+        : `Could not reopen the round: ${err.message}.`);
+      return;
+    }
+    refresh();
+    return;
+  }
   const btn = e.target.closest('[data-release]');
   if (!btn) return;
   const m = MATCHUPS.find(x => x.id === btn.dataset.release);
@@ -261,7 +331,7 @@ out.addEventListener('click', async (e) => {
   if (!confirm(`Release matchup ${numberOf(m)}, ${m.a.name} v ${m.b.name}? Every waiting phone opens it within seconds. It cannot be taken back.`)) return;
   btn.disabled = true; btn.textContent = 'Releasing…';
   try {
-    const r = await release(SESSION_LABEL, m.id, key());
+    const r = await release(SESSION_LABEL, m.id, key(), DEVICE);
     if (!r || r.ok !== true) throw new Error((r && r.error) || 'the server refused it');
   } catch (err) {
     btn.disabled = false; btn.textContent = 'Release';
@@ -274,13 +344,13 @@ out.addEventListener('click', async (e) => {
 document.getElementById('loginForm').onsubmit = (e) => { e.preventDefault(); refresh(); };
 document.getElementById('logout').onclick = () => {
   try { localStorage.removeItem(KEY_STORE); } catch (e) {}
-  keyInput.value = ''; out.innerHTML = ''; showLogin('');
+  keyInput.value = ''; out.innerHTML = ''; document.getElementById('activity').innerHTML = ''; showLogin('');
 };
 document.getElementById('close').onclick = async () => {
   if (!key()) { out.innerHTML = '<p class="warn">The presenter key is needed to do that.</p>'; return; }
-  if (!confirm('Close the round now? Nobody who has not locked will be able to.')) return;
+  if (!confirm('Close the round now? Phones stop taking locks. You can reopen it from the round status at the top of this page.')) return;
   try {
-    const r = await setState(SESSION_LABEL, 'closed', key());
+    const r = await setState(SESSION_LABEL, 'closed', key(), DEVICE);
     if (!r || r.ok !== true) throw new Error((r && r.error) || 'the server refused it');
   } catch (err) {
     out.innerHTML = `<p class="warn">Could not close the round: ${esc(err.message)}.</p>`;
@@ -293,7 +363,7 @@ document.getElementById('reset').onclick = async () => {
   if (!confirm('Wipe the sheet? Every answer, survey, release and round state goes. Export first if you want to keep them.')) return;
   if (!confirm('This cannot be undone. Wipe everything now?')) return;
   try {
-    const r = await resetSheet(key(), SESSION_LABEL);
+    const r = await resetSheet(key(), SESSION_LABEL, DEVICE);
     if (!r || r.ok !== true) throw new Error((r && r.error) || 'the server refused it');
   } catch (err) {
     out.innerHTML = `<p class="warn">Could not wipe the sheet: ${esc(err.message)}.</p>`;
