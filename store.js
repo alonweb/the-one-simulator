@@ -26,6 +26,28 @@ export function parseRows(response) {
   });
 }
 
+// Each competition is locked on its own, as its own row: the player's id, then the matchup.
+const LOCK_SEP = '~';
+export function lockIdOf(playerId, matchupId) { return `${playerId}${LOCK_SEP}${matchupId}`; }
+export function playerIdOf(submissionId) { return String(submissionId).split(LOCK_SEP)[0]; }
+
+/**
+ * One row per player again, for scoring: a player's competition rows are joined under
+ * the player's id. If a competition somehow arrives twice, the first answer stands.
+ */
+export function mergeByPlayer(rows) {
+  const byPlayer = new Map();
+  for (const r of rows || []) {
+    const id = playerIdOf(r.submissionId);
+    if (!byPlayer.has(id)) byPlayer.set(id, { submissionId: id, participant: r.participant, answers: {} });
+    const p = byPlayer.get(id);
+    for (const [matchupId, a] of Object.entries(r.answers || {})) {
+      if (!(matchupId in p.answers)) p.answers[matchupId] = a;
+    }
+  }
+  return [...byPlayer.values()];
+}
+
 async function post(body) {
   const res = await fetch(ENDPOINT, {
     method: 'POST',
@@ -56,7 +78,9 @@ export async function submitSurvey(payload, opts = {}) {
 }
 
 async function send(body, opts = {}) {
-  const attempts = opts.attempts ?? 8;
+  // twelve tries is about two minutes: long enough to outlast Google's limit of roughly 60
+  // sheet writes a minute when a room locks two released matchups in the same moment
+  const attempts = opts.attempts ?? 12;
   const base = opts.baseDelayMs ?? 2000;
   const onAttempt = opts.onAttempt || (() => {});
   let lastError;
@@ -99,10 +123,31 @@ export async function setState(sessionCode, state, key) {
   return post(buildStateWrite(sessionCode, state, key));
 }
 
-export async function fetchState(sessionCode) {
+/** A release, checked before it leaves the page. Releasing cannot be taken back. */
+export function buildReleaseWrite(sessionCode, matchupId, key) {
+  const code = normalizeCode(sessionCode);
+  if (!code) throw new Error('A session code is needed.');
+  if (!String(matchupId == null ? '' : matchupId).trim()) throw new Error('A matchup is needed.');
+  if (!String(key == null ? '' : key).trim()) throw new Error('The presenter key is needed.');
+  return { kind: 'release', sessionCode: code, matchupId: String(matchupId).trim(), key: String(key).trim() };
+}
+
+export async function release(sessionCode, matchupId, key) {
+  return post(buildReleaseWrite(sessionCode, matchupId, key));
+}
+
+/** The round state and the released competitions. A server without releases has none. */
+export function parseSession(data) {
+  return {
+    state: (data && data.state) || 'open',
+    released: data && Array.isArray(data.released) ? data.released.map(String) : []
+  };
+}
+
+/** Public on purpose: every phone reads it while it waits. It carries no answers. */
+export async function fetchSession(sessionCode) {
   const res = await fetch(`${ENDPOINT}?what=state&code=${encodeURIComponent(normalizeCode(sessionCode))}`);
-  const data = await res.json();
-  return data.state || 'open';
+  return parseSession(await res.json());
 }
 
 /**
@@ -123,11 +168,14 @@ export async function fetchRows(sessionCode, key) { return fetchGated('rows', se
 export async function fetchSurvey(sessionCode, key) { return fetchGated('survey', sessionCode, key); }
 
 /** The wipe, checked before it leaves the page. It empties every tab of the sheet. */
-export function buildResetWrite(key) {
+export function buildResetWrite(key, sessionCode) {
   if (!String(key == null ? '' : key).trim()) throw new Error('The presenter key is needed.');
-  return { kind: 'reset', key: String(key).trim() };
+  const w = { kind: 'reset', key: String(key).trim() };
+  // the label lets the server drop its cached releases at once instead of seconds later
+  if (normalizeCode(sessionCode)) w.sessionCode = normalizeCode(sessionCode);
+  return w;
 }
 
-export async function resetSheet(key) {
-  return post(buildResetWrite(key));
+export async function resetSheet(key, sessionCode) {
+  return post(buildResetWrite(key, sessionCode));
 }

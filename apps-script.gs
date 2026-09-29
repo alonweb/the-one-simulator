@@ -10,9 +10,9 @@
  * It is deliberately not in this file, because this file is published. Until it is set,
  * the server refuses to close a round, and refuses to show the statistics at all.
  *
- * The key is the presenter's password. It protects three things: reading anyone's
- * answers or survey (the statistics page), closing the round, and wiping the sheet.
- * Submitting answers needs no key.
+ * The key is the presenter's password. It protects four things: reading anyone's
+ * answers or survey (the statistics page), releasing a competition, closing the round,
+ * and wiping the sheet. Submitting answers needs no key.
  */
 const RESPONSES = 'responses';
 const SESSION = 'session';
@@ -82,13 +82,45 @@ function json_(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function readState_(code) {
+// A release is a session row whose state reads "released:<matchupId>". It never changes
+// whether the round is open or closed; only the other rows do.
+const RELEASED = 'released:';
+
+/** The round state (open until closed) and every competition released, in release order. */
+function readSession_(code) {
   const rows = session_().getDataRange().getValues().slice(1);
-  for (let i = rows.length - 1; i >= 0; i--) {
-    if (String(rows[i][0]) === String(code)) return String(rows[i][1]);
+  let state = 'open';
+  const released = [];
+  for (const r of rows) {
+    if (String(r[0]) !== String(code)) continue;
+    const s = String(r[1]);
+    if (s.indexOf(RELEASED) === 0) {
+      const id = s.slice(RELEASED.length);
+      if (released.indexOf(id) < 0) released.push(id);
+    } else {
+      state = s;
+    }
   }
-  return 'open';
+  return { state: state, released: released };
 }
+
+function readState_(code) { return readSession_(code).state; }
+
+// Every waiting phone reads the session every few seconds. Caching the answer briefly
+// keeps forty phones from each reading the sheet; a write clears it at once.
+const SESSION_CACHE_SECONDS = 4;
+function cacheKey_(code) { return 'session:' + String(code); }
+
+function cachedSession_(code) {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get(cacheKey_(code));
+  if (hit) return JSON.parse(hit);
+  const fresh = readSession_(code);
+  cache.put(cacheKey_(code), JSON.stringify(fresh), SESSION_CACHE_SECONDS);
+  return fresh;
+}
+
+function forget_(code) { CacheService.getScriptCache().remove(cacheKey_(code)); }
 
 /** The secret that separates the presenter from everyone holding the same link. */
 function presenterKey_() {
@@ -121,7 +153,21 @@ function doPost(e) {
       const refused = keyCheck_(body.key);
       if (refused) return json_({ ok: false, error: refused });
       wipe_(responses_()); wipe_(survey_()); wipe_(session_());
+      // the presenter sends its own label; any other code's cached state expires within seconds
+      if (body.sessionCode) forget_(body.sessionCode);
       return json_({ ok: true, reset: true });
+    }
+    if (body.kind === 'release') {
+      const refused = keyCheck_(body.key);
+      if (refused) return json_({ ok: false, error: refused });
+      if (!String(body.sessionCode || '').trim()) {
+        return json_({ ok: false, error: 'a session code is needed' });
+      }
+      const id = String(body.matchupId || '').trim();
+      if (!/^[A-Za-z0-9_-]{1,20}$/.test(id)) return json_({ ok: false, error: 'a matchup id is needed' });
+      session_().appendRow([body.sessionCode, RELEASED + id, new Date()]);
+      forget_(body.sessionCode);
+      return json_({ ok: true, released: id });
     }
     if (body.kind === 'state') {
       const refused = keyCheck_(body.key);
@@ -133,6 +179,7 @@ function doPost(e) {
         return json_({ ok: false, error: 'a session code is needed' });
       }
       session_().appendRow([body.sessionCode, body.state, new Date()]);
+      forget_(body.sessionCode);
       return json_({ ok: true, state: body.state });
     }
     if (!String(body.sessionCode || '').trim()) {
@@ -162,7 +209,8 @@ function doGet(e) {
   const what = (e && e.parameter && e.parameter.what) || 'rows';
   if (what === 'state') {
     if (!String(code).trim()) return json_({ ok: false, error: 'a session code is needed' });
-    return json_({ ok: true, state: readState_(code) });
+    const s = cachedSession_(code);
+    return json_({ ok: true, state: s.state, released: s.released });
   }
   // Everything else is the statistics page: every player's answers and survey, the whole
   // sheet unless a code narrows it. The participant link is public, so only the

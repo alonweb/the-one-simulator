@@ -70,6 +70,14 @@ export function leaderboard(rows, crowdByMatchup) {
   });
 }
 
+/** The board as the room sees it: points per released competition (null = not locked), then the total. */
+export function boardTable(board, matchupIds) {
+  return (board || []).map(p => ({
+    rank: p.rank, participant: p.participant, submissionId: p.submissionId, total: p.total,
+    cells: matchupIds.map(id => (p.perMatchup[id] ? p.perMatchup[id].total : null))
+  }));
+}
+
 export function sessionStats(rows, crowdByMatchup) {
   const board = leaderboard(rows, crowdByMatchup);
   let exact = 0, categoryAnswers = 0;
