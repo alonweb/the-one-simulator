@@ -76,12 +76,16 @@ p { margin: 10px 0; }
 .stage { margin: 0 calc(var(--pad) * -1); display: flex; flex-direction: column;
           flex: 1 1 auto; min-height: 0; }
 
-.shot { position: relative; margin: 0 var(--pad); flex: 1 1 0; min-height: 168px; }
+/* The frame fills its shot by position, not by height: 100%. Safari does not resolve a percentage
+   height inside a flexed box, so the frame grew to its full size and covered the slider below it
+   (iPhones, 2026-09-29). The cap lives on the shot for the same reason. */
+.shot { position: relative; margin: 0 var(--pad); flex: 1 1 0; min-height: 168px; max-height: 330px; }
 .frame {
-  border-radius: var(--r-card); overflow: hidden; background: var(--grey-2);
-  height: 100%; max-height: 330px; cursor: pointer;
+  position: absolute; inset: 0;
+  border-radius: var(--r-card); overflow: hidden; background: var(--grey-2); cursor: pointer;
 }
-.frame img { width: 100%; height: 100%; object-fit: contain; object-position: 50% 50%; display: block; }
+.frame img { width: 100%; height: 100%; object-fit: contain; object-position: 50% 50%; display: block;
+             -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .shot.dim .frame::after {
   content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.62);
   border-radius: var(--r-card); pointer-events: none;
@@ -127,13 +131,14 @@ p { margin: 10px 0; }
 .predict input[type=range] {
   -webkit-appearance: none; appearance: none; background: transparent;
   width: 100%; height: 34px; margin: 0; cursor: pointer; display: block;
+  touch-action: none; /* a finger on the slider drags it (app.js followFinger), never the page */
 }
 .predict input[type=range]::-webkit-slider-runnable-track {
   height: 12px; border-radius: var(--r-pill);
   background: linear-gradient(to right, var(--yellow) 0 var(--pos, 50%), var(--white) var(--pos, 50%) 100%);
 }
 .predict input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 18px; height: 34px; border: 0; border-radius: 9px;
+  -webkit-appearance: none; width: 30px; height: 34px; border: 0; border-radius: 10px;
   background: var(--yellow); margin-top: -11px;
 }
 .predict input[type=range]::-moz-range-track {
@@ -141,7 +146,7 @@ p { margin: 10px 0; }
   background: linear-gradient(to right, var(--yellow) 0 var(--pos, 50%), var(--white) var(--pos, 50%) 100%);
 }
 .predict input[type=range]::-moz-range-thumb {
-  width: 18px; height: 34px; border: 0; border-radius: 9px; background: var(--yellow);
+  width: 30px; height: 34px; border: 0; border-radius: 10px; background: var(--yellow);
 }
 .predict.idle input[type=range]::-webkit-slider-runnable-track { background: var(--white); }
 .predict.idle input[type=range]::-moz-range-track { background: var(--white); }
@@ -171,7 +176,13 @@ button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 a.cta { color: var(--ink); text-decoration: none; border-radius: var(--r-pill); }
 a.cta:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 .cta:hover { background: #F2F200; }
-.cta:disabled { background: var(--yellow-pale); color: rgba(0,0,0,.42); cursor: not-allowed; }
+.cta:disabled, .cta[aria-disabled="true"] { background: var(--yellow-pale); color: rgba(0,0,0,.42); cursor: not-allowed; }
+/* a tap on the question's button before it is answered shakes what is missing (app.js nudge) */
+@keyframes nudge { 0%, 100% { transform: none; } 20% { transform: translateX(-7px); } 40% { transform: translateX(7px); }
+                   60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+.predict.nudge { animation: nudge .45s ease; box-shadow: 0 0 0 4px var(--yellow); }
+.stage.nudge .vote { animation: nudge .45s ease; }
+@media (prefers-reduced-motion: reduce) { .predict.nudge, .stage.nudge .vote { animation: none; } }
 .ghost { background: var(--white); box-shadow: inset 0 0 0 2px var(--ink); font-weight: 700; }
 .ghost:hover { background: var(--yellow); }
 .small { min-height: 42px; font-size: 14px; }
