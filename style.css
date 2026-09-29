@@ -74,7 +74,12 @@ p { margin: 10px 0; }
 /* the banner runs to both page edges, so the stage cancels the page padding and the
    photographs put it back */
 .stage { margin: 0 calc(var(--pad) * -1); display: flex; flex-direction: column;
-          flex: 1 1 auto; min-height: 0; }
+          flex: 1 1 auto; min-height: 0; --seam: 20px; }
+/* The banner overlaps both photographs by the seam. Each photograph stops short of it, so no part
+   of the picture sits under the banner: a head at the top of a full-length photo was covered
+   (2026-09-29). Only the frame's grey edge goes under. */
+.stage > .shot:first-child .frame { padding-bottom: var(--seam); }
+.stage > .shot:last-child .frame { padding-top: var(--seam); }
 
 /* The frame fills its shot by position, not by height: 100%. Safari does not resolve a percentage
    height inside a flexed box, so the frame grew to its full size and covered the slider below it
@@ -116,7 +121,7 @@ p { margin: 10px 0; }
   flex: 0 0 auto; position: relative; z-index: 2; background: var(--yellow); color: var(--ink);
   text-align: center; font-weight: 800; font-style: italic;
   font-size: clamp(21px, 6.6vw, 28px); letter-spacing: -.02em;
-  padding: 12px var(--pad); margin: -20px 0; min-height: 56px;
+  padding: 12px var(--pad); margin: calc(var(--seam) * -1) 0; min-height: 56px;
   display: grid; place-items: center;
 }
 
