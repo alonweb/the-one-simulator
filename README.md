@@ -31,7 +31,10 @@ Spec and plan live in the HumanPatterns project under
 
 1. **Set the four categories and ten contestants** in `config.js`, and put the
    photographs in `photos/`. The categories shipped here are the pilot mockup's:
-   best smile, style, best body, take to Mama.
+   best smile, style, best body, take to Mama. Each contestant has five photographs,
+   named `<id>-general.jpg` (shown for "who is the one" and wherever she is named) and
+   `<id>-<category key>.jpg` (shown on that category's question), for example
+   `c1-smile.jpg`, `c1-mama.jpg`. A missing category photograph falls back to the general one.
 2. **Set the presenter key.** In the Apps Script editor: **Project Settings → Script
    properties → Add script property**, name `PRESENTER_KEY`, value whatever the
    presenter will type. It is not in this repository, because this repository is public.

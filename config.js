@@ -18,15 +18,21 @@ export const CATEGORIES = [
     hint: 'Who would you introduce at home?' }
 ];
 
-// Ten contestants in five matchups. These are the AI demo portraits already used in the
-// mockups, labelled as such there; they are not real contestants. Swap in the real set
-// when Avishai delivers it, keeping the c1..c10 ids so stored answers still resolve.
+// Ten contestants in five matchups, the set Alon supplied on 2026-09-29 (one folder per
+// game). Each has five photographs: `photo` is the general one, used for "who is the one"
+// and everywhere a contestant is only named; `photos` holds one per category, shown on
+// that category's question. Keep the c1..c10 ids so stored answers still resolve.
+const contestant = (id, name) => ({
+  id, name, photo: `photos/${id}-general.jpg`,
+  photos: Object.fromEntries(CATEGORIES.map(c => [c.key, `photos/${id}-${c.key}.jpg`]))
+});
+
 export const MATCHUPS = [
-  { id: 'm1', a: { id: 'c1', name: 'Ana', photo: 'photos/c1.jpg' }, b: { id: 'c2', name: 'Camila', photo: 'photos/c2.jpg' } },
-  { id: 'm2', a: { id: 'c3', name: 'Carolina', photo: 'photos/c3.jpg' }, b: { id: 'c4', name: 'Daniela', photo: 'photos/c4.jpg' } },
-  { id: 'm3', a: { id: 'c5', name: 'Gabriela', photo: 'photos/c5.jpg' }, b: { id: 'c6', name: 'Isabella', photo: 'photos/c6.jpg' } },
-  { id: 'm4', a: { id: 'c7', name: 'Juliana', photo: 'photos/c7.jpg' }, b: { id: 'c8', name: 'Laura', photo: 'photos/c8.jpg' } },
-  { id: 'm5', a: { id: 'c9', name: 'Luciana', photo: 'photos/c9.jpg' }, b: { id: 'c10', name: 'Manuela', photo: 'photos/c10.jpg' } }
+  { id: 'm1', a: contestant('c1', 'Anna'), b: contestant('c2', 'Michelle') },
+  { id: 'm2', a: contestant('c3', 'Karin'), b: contestant('c4', 'Maya') },
+  { id: 'm3', a: contestant('c5', 'Ingrid'), b: contestant('c6', 'Tamara') },
+  { id: 'm4', a: contestant('c7', 'Emilie'), b: contestant('c8', 'Sofia') },
+  { id: 'm5', a: contestant('c9', 'Kate'), b: contestant('c10', 'Sasha') }
 ];
 
 // Every row this build writes carries this label; closing the round applies to it. The
