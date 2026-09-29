@@ -37,6 +37,30 @@ function survey_() {
 }
 
 /**
+ * The activity log: every presenter action (release, close, reopen, reset, and any refused for
+ * a wrong key), when it happened and which presenter device did it. Reset never wipes this tab,
+ * so it also records who reset the sheet. Added 2026-09-29, after a round was found closed and
+ * nothing said when or by whom. Players' locks are not logged; they have their own rows.
+ */
+const LOG = 'log';
+function log_() { return sheet_(LOG, ['at', 'what', 'sessionCode', 'detail', 'by']); }
+
+function note_(what, code, detail, by) {
+  try {
+    log_().appendRow([new Date().toISOString(), what, String(code || ''), String(detail || ''),
+                      String(by || '').slice(0, 60)]);
+  } catch (err) {} // the log must never stop the action it records
+}
+
+function readLog_() {
+  const rows = log_().getDataRange().getValues().slice(1).filter(r => r[0] !== '' && r[0] != null);
+  return rows.slice(-200).reverse().map(r => ({
+    at: r[0] instanceof Date ? r[0].toISOString() : String(r[0]),
+    what: String(r[1]), sessionCode: String(r[2]), detail: String(r[3]), by: String(r[4])
+  }));
+}
+
+/**
  * Appends one row, safely under load.
  *
  * SpreadsheetApp.appendRow is read-then-write: forty phones locking in the same second
@@ -151,15 +175,16 @@ function doPost(e) {
     // configured, nobody can do either, including the presenter.
     if (body.kind === 'reset') {
       const refused = keyCheck_(body.key);
-      if (refused) return json_({ ok: false, error: refused });
+      if (refused) { note_('refused', body.sessionCode, 'reset: ' + refused, body.by); return json_({ ok: false, error: refused }); }
       wipe_(responses_()); wipe_(survey_()); wipe_(session_());
+      note_('reset', body.sessionCode, '', body.by);
       // the presenter sends its own label; any other code's cached state expires within seconds
       if (body.sessionCode) forget_(body.sessionCode);
       return json_({ ok: true, reset: true });
     }
     if (body.kind === 'release') {
       const refused = keyCheck_(body.key);
-      if (refused) return json_({ ok: false, error: refused });
+      if (refused) { note_('refused', body.sessionCode, 'release: ' + refused, body.by); return json_({ ok: false, error: refused }); }
       if (!String(body.sessionCode || '').trim()) {
         return json_({ ok: false, error: 'a session code is needed' });
       }
@@ -167,19 +192,23 @@ function doPost(e) {
       if (!/^[A-Za-z0-9_-]{1,20}$/.test(id)) return json_({ ok: false, error: 'a matchup id is needed' });
       session_().appendRow([body.sessionCode, RELEASED + id, new Date()]);
       forget_(body.sessionCode);
+      note_('release', body.sessionCode, id, body.by);
       return json_({ ok: true, released: id });
     }
     if (body.kind === 'state') {
       const refused = keyCheck_(body.key);
-      if (refused) return json_({ ok: false, error: refused });
-      if (String(body.state) !== 'closed' && String(body.state) !== 'revealed') {
-        return json_({ ok: false, error: 'the state must be closed or revealed' });
+      if (refused) { note_('refused', body.sessionCode, String(body.state) + ': ' + refused, body.by); return json_({ ok: false, error: refused }); }
+      // 'open' reopens a closed round (2026-09-29): the latest state row wins, and the
+      // releases and every locked answer stay as they were
+      if (['open', 'closed', 'revealed'].indexOf(String(body.state)) < 0) {
+        return json_({ ok: false, error: 'the state must be open, closed or revealed' });
       }
       if (!String(body.sessionCode || '').trim()) {
         return json_({ ok: false, error: 'a session code is needed' });
       }
       session_().appendRow([body.sessionCode, body.state, new Date()]);
       forget_(body.sessionCode);
+      note_(String(body.state) === 'open' ? 'reopen' : String(body.state), body.sessionCode, '', body.by);
       return json_({ ok: true, state: body.state });
     }
     if (!String(body.sessionCode || '').trim()) {
@@ -218,5 +247,6 @@ function doGet(e) {
   const refused = keyCheck_((e && e.parameter && e.parameter.key) || '');
   if (refused) return json_({ ok: false, error: refused });
   if (what === 'survey') return json_({ ok: true, rows: rowsOf_(survey_(), code) });
+  if (what === 'log') return json_({ ok: true, log: readLog_() });
   return json_({ ok: true, rows: rowsOf_(responses_(), code) });
 }

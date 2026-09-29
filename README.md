@@ -98,7 +98,7 @@ types: `scale` (min..max, `low`/`high` explaining the two ends), `choice` (one o
 
 The endpoint URL is in `config.js`, so it reaches every participant's browser. That is
 unavoidable: the page has to write to it. What the presenter key adds is that only the
-presenter can **release a matchup**, **close a round**, **wipe the sheet**, and **read anyone's answers** — the
+presenter can **release a matchup**, **close or reopen a round**, **wipe the sheet**, **read the activity log**, and **read anyone's answers** — the
 statistics page is refused without it. Submitting answers needs no key.
 
 Nothing here is real security. The key travels in the request to our own endpoint and
@@ -113,6 +113,14 @@ data is a focus group's opinions about photographs, not anything that needs to.
    (2026-09-29), and a player saw a stuck Lock button. It keeps both awake while the page is
    open, and releases nothing. Phones also wake their server when the review screen or the
    survey opens, and the Lock and Send buttons show "Saving…" with a turning ring while they wait.
+   **The round status** is the large banner at the top: green **Round is OPEN**, or red
+   **Round is CLOSED** with a **Reopen the round** button. Reopening keeps every locked answer,
+   and phones showing "Closed" go back to waiting within seconds. Before 2026-09-29 a closed round
+   could only come back through Reset, which wipes the answers.
+   **The activity log** at the bottom of the page lists every release, close, reopen and reset,
+   newest first, with the time and the presenter device that did it (for example `Mac·k3f9`; the
+   page names its own device). It lives in the sheet's `log` tab, which Reset does not clear. It
+   was added after a round was found closed on 2026-09-29 with nothing to say when or by whom.
 2. Participants open the participant link and enter their name. Their phone waits until you
    release a matchup.
 3. **Release** a matchup in the Competitions strip. Every waiting phone opens it within about
