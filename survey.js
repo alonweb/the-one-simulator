@@ -1,5 +1,34 @@
 /** The end-of-game survey: pure functions over the answers a participant gives. */
 
+/** The languages the survey page offers, the first being the one it falls back to. */
+export const LANGUAGES = ['en', 'he'];
+
+/**
+ * A question's wording in one language. Each option keeps its English text as `value`,
+ * which is what gets stored, so answers read the same whatever language gave them.
+ * A question with no wording in that language shows its English.
+ */
+export function localize(q, lang) {
+  const t = (lang !== 'en' && q[lang]) || {};
+  const shown = t.options || [];
+  return {
+    label: t.label || q.label, low: t.low || q.low, high: t.high || q.high,
+    options: (q.options || []).map((value, i) => ({ value, text: shown[i] || value }))
+  };
+}
+
+/** The language to open in: a ?lang= link, else the player's own earlier choice, else the phone's, else English. */
+export function pickLanguage({ url, saved, browser } = {}) {
+  if (LANGUAGES.includes(url)) return url;
+  if (LANGUAGES.includes(saved)) return saved;
+  for (const tag of browser || []) {
+    const base = String(tag).toLowerCase().split('-')[0];
+    const code = base === 'iw' ? 'he' : base;
+    if (LANGUAGES.includes(code)) return code;
+  }
+  return LANGUAGES[0];
+}
+
 export function setSurveyAnswer(answers, key, value) {
   return { ...(answers || {}), [key]: value };
 }

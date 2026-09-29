@@ -112,7 +112,8 @@ console.log(`${t()} ${N} surveys at once`);
 const s0 = Date.now();
 const surveys = await Promise.all(Array.from({ length: N }, (_, i) => {
   const answers = {};
-  for (const qn of SURVEY) answers[qn.key] = qn.type === 'choice' ? pick(qn.options) : `load test ${run}`;
+  for (const qn of SURVEY) answers[qn.key] = qn.type === 'choice' ? pick(qn.options)
+    : qn.type === 'scale' ? qn.min + Math.floor(Math.random() * (qn.max - qn.min + 1)) : `load test ${run}`;
   let attempts = 0; const a0 = Date.now();
   return submitSurvey({ sessionCode: CODE, participant: `Load ${i + 1}`, answers, submissionId: `loadsrv-${run}-${i + 1}` },
                       { onAttempt: (a) => { attempts = a; } })
