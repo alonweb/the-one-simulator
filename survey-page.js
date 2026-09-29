@@ -1,5 +1,5 @@
-import { SURVEY, SURVEY_TEXT, SESSION_LABEL } from './config.js';
-import { submitSurvey } from './store.js';
+import { SURVEY, SURVEY_TEXT, SESSION_LABEL, ENDPOINT } from './config.js';
+import { submitSurvey, wake } from './store.js';
 import { escapeHtml as esc } from './html.js';
 import { setSurveyAnswer, isSurveyComplete, localize, pickLanguage, LANGUAGES } from './survey.js';
 import { lastName } from './finish.js';
@@ -81,6 +81,12 @@ function renderSent() {
   bindChrome();
 }
 
+/** A button that is sending: it stays bright and turns, so a slow server never reads as a stuck page. */
+function busy(btn, text) {
+  btn.classList.add('busy');
+  btn.innerHTML = `<span class="spin" aria-hidden="true"></span>${esc(text)}`;
+}
+
 function syncButton() {
   const btn = document.getElementById('send');
   const ok = ready();
@@ -98,7 +104,8 @@ function render() {
       <h3>${i + 1}. ${esc(localize(q, lang).label)}${q.required === false ? ` <small>(${esc(T().optional)})</small>` : ''}</h3>
       ${field(q)}</div>`).join('')}
     <p class="err" id="surveyErr"></p>
-    <button id="send" class="cta" ${ready() ? '' : 'disabled'}>${esc(ready() ? T().send : T().incomplete)}</button>`;
+    <button id="send" class="cta" ${ready() ? '' : 'disabled'}>${esc(ready() ? T().send : T().incomplete)}</button>
+    <p class="note" id="sendNote" role="status" hidden>${esc(T().sendingNote)}</p>`;
   bindChrome();
 
   // typing is handled without redrawing, which would steal the keyboard
@@ -116,19 +123,25 @@ function render() {
   });
   document.getElementById('send').onclick = async () => {
     const btn = document.getElementById('send');
-    btn.disabled = true; btn.textContent = T().sending;
+    const note = document.getElementById('sendNote');
+    btn.disabled = true; note.hidden = false;
+    busy(btn, T().sending);
     try {
       // the answers are stored in English; `lang` records which language the player read them in
       await submitSurvey({ sessionCode: SESSION_LABEL, participant: state.name.trim(),
                            answers: { ...state.answers, lang }, submissionId: state.id },
-                         { onAttempt: (n) => { btn.textContent = n === 1 ? T().sending : T().retrying(n); } });
+                         { onAttempt: (n) => busy(btn, n === 1 ? T().sending : T().retrying(n)) });
       state.sent = true; save();
       window.scrollTo(0, 0); render();
     } catch (err) {
       document.getElementById('surveyErr').textContent = T().failed;
+      btn.classList.remove('busy'); note.hidden = true;
       btn.disabled = false; btn.textContent = T().send;
     }
   };
 }
 
 render();
+// wake the server while the player answers, so Send does not wait for it (an idle server took
+// up to 11 s to answer, 2026-09-29)
+if (!state.sent) wake(ENDPOINT, SESSION_LABEL);
