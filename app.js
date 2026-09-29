@@ -246,7 +246,7 @@ function renderPlay() {
              aria-label="${esc(q.label)}: how the room splits between ${esc(m.a.name)} and ${esc(m.b.name)}">
       <div class="split">${splitMarkup(m, pos)}</div>
     </div>
-    <button id="next" class="cta" ${done ? '' : 'disabled'}><span class="lbl">${cta}</span>
+    <button id="next" class="cta" aria-disabled="${done ? 'false' : 'true'}"><span class="lbl">${cta}</span>
       <span class="chev" aria-hidden="true">&rsaquo;</span></button>`;
 
   wireChrome(m);
@@ -288,12 +288,13 @@ function wirePlay(m, q, back, ahead) {
       write(predictionPatch(q.key, pos, m.a.id, m.b.id));
       const next = document.getElementById('next');
       const ok = pos !== 50;
-      next.disabled = !ok;
+      next.setAttribute('aria-disabled', String(!ok));
       next.querySelector('.lbl').textContent = ok
         ? (ahead !== null ? 'Next' : 'Review and lock')
         : 'Move the slider';
     };
     range.onchange = () => { write(predictionPatch(q.key, Number(range.value), m.a.id, m.b.id)); };
+    followFinger(range);
   }
 
   el.querySelectorAll('[data-zoom]').forEach(b => {
@@ -301,11 +302,49 @@ function wirePlay(m, q, back, ahead) {
   });
 
   document.getElementById('next').onclick = () => {
+    // not ready: point at what is missing, the slider once a side is picked, else the votes
+    if (document.getElementById('next').getAttribute('aria-disabled') === 'true') {
+      return nudge(el.querySelector('.predict.live') ? '.predict' : '.stage');
+    }
     if (ahead === null) return go('review');
     state.step = ahead; go('play');
   };
   const b = document.getElementById('back');
   if (b) b.onclick = () => { state.step = back; go('play'); };
+}
+
+/**
+ * iPhone Safari moves a slider only when the finger lands on its handle: a tap on the bar does
+ * nothing, and people read the untouched slider as a stuck game (2026-09-29). Here a finger
+ * anywhere on the bar sets it and a drag follows the finger. The value uses the browser's own
+ * geometry, the handle's centre travelling between half a handle from each end, so it agrees
+ * with a native drag on the phones that have one.
+ */
+const THUMB = 30; // px, the handle's width in style.css
+function followFinger(range) {
+  let finger = null;
+  const set = (e) => {
+    const b = range.getBoundingClientRect();
+    const v = Math.round(Math.min(1, Math.max(0, (e.clientX - b.left - THUMB / 2) / (b.width - THUMB))) * 100);
+    if (String(v) !== range.value) { range.value = v; range.dispatchEvent(new Event('input')); }
+  };
+  const up = (e) => { if (e.pointerId !== finger) return; finger = null; range.dispatchEvent(new Event('change')); };
+  range.addEventListener('pointerdown', (e) => {
+    if (range.disabled) return;
+    finger = e.pointerId;
+    try { range.setPointerCapture(e.pointerId); } catch (err) {}
+    set(e);
+  });
+  range.addEventListener('pointermove', (e) => { if (e.pointerId === finger) set(e); });
+  range.addEventListener('pointerup', up);
+  range.addEventListener('pointercancel', up);
+}
+
+/** A tap on the button before the question is answered shakes what is missing, rather than doing nothing. */
+function nudge(sel) {
+  const n = el.querySelector(sel);
+  if (!n) return;
+  n.classList.remove('nudge'); void n.offsetWidth; n.classList.add('nudge');
 }
 
 /** A photograph on its own, because a phone held at arm's length in a meeting room is small. */
