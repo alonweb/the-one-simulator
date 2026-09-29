@@ -197,13 +197,15 @@ label { display: block; font-size: 13px; font-weight: 800; text-transform: upper
 .join label:first-child { margin-top: 0; }
 .rules { border: 2px solid var(--ink); border-radius: 22px; padding: 4px 18px; margin-top: 22px; }
 .rules p { font-size: 15px; }
-.strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .strip img { width: 100%; aspect-ratio: 5 / 6; object-fit: contain; background: var(--grey-2);
              border-radius: 12px; display: block; }
-/* the waiting screen: one column per matchup, its two photos and where it stands */
+/* the waiting screen: one column per matchup, its two photos and where it stands. The
+   label shrinks with its column, so "MATCHUP" never pushes five columns past the screen. */
 .strip .slot { display: flex; flex-direction: column; gap: 4px; padding: 4px; border-radius: 14px;
-               border: 2px solid var(--grey); }
-.strip .slot span { font-size: 11px; font-weight: 800; text-align: center; text-transform: uppercase; }
+               border: 2px solid var(--grey); container-type: inline-size; }
+.strip .slot span { font-size: 9px; font-size: min(11px, 20cqi); font-weight: 800; text-align: center;
+                    text-transform: uppercase; }
 .strip .slot.done { background: var(--yellow); border-color: var(--ink); }
 
 /* ---------- cards, boards, banners ---------- */

@@ -53,3 +53,8 @@ export function sliderOf(key, answer, leftId) {
   const share = typeof answer.share === 'number' ? answer.share : DEFAULT_SHARE;
   return answer.predicted === leftId ? share : 100 - share;
 }
+
+/** The photograph a question shows: the category's own, else the contestant's general one. */
+export function photoFor(contestant, key) {
+  return (contestant.photos && contestant.photos[key]) || contestant.photo;
+}

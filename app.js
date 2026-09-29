@@ -6,7 +6,7 @@ import { markDone, clearDone, finishedAll } from './finish.js';
 import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset,
          shapeOf, draftMatches, clearMatchup } from './draft.js';
 import { questionsOf, nextCompetition, nextQuestion, prevQuestion, isQuestionAnswered,
-         predictionPatch, sliderOf } from './flow.js';
+         predictionPatch, sliderOf, photoFor } from './flow.js';
 
 const el = document.getElementById('screen');
 const QUESTIONS = questionsOf(CATEGORIES);
@@ -216,7 +216,7 @@ function renderPlay() {
   const shot = (c) => `
     <div class="shot ${voted ? (ans.vote === c.id ? 'chosen' : 'dim') : ''}">
       <div class="frame" data-vote="${c.id}" aria-hidden="true">
-        <img src="${c.photo}" alt=""></div>
+        <img src="${photoFor(c, q.key)}" alt=""></div>
       <button class="vote" data-vote="${c.id}" aria-pressed="${voted && ans.vote === c.id}">
         <b>Vote</b> ${esc(c.name)} <span class="chev" aria-hidden="true">&rsaquo;</span></button>
       <button class="zoom" data-zoom="${c.id}" aria-label="See ${esc(c.name)} larger">
@@ -251,6 +251,16 @@ function renderPlay() {
 
   wireChrome(m);
   wirePlay(m, q, back, ahead);
+  preload(m);
+}
+
+/** Every question shows its own photograph: fetch the matchup's ahead of time, so the
+    next question never opens on an empty frame. */
+const preloaded = new Set();
+function preload(m) {
+  if (preloaded.has(m.id)) return;
+  preloaded.add(m.id);
+  [m.a, m.b].forEach(c => QUESTIONS.forEach(q => { new Image().src = photoFor(c, q.key); }));
 }
 
 function wirePlay(m, q, back, ahead) {
@@ -287,7 +297,7 @@ function wirePlay(m, q, back, ahead) {
   }
 
   el.querySelectorAll('[data-zoom]').forEach(b => {
-    b.onclick = (e) => { e.stopPropagation(); lightbox(b.dataset.zoom === m.a.id ? m.a : m.b); };
+    b.onclick = (e) => { e.stopPropagation(); lightbox(b.dataset.zoom === m.a.id ? m.a : m.b, q.key); };
   });
 
   document.getElementById('next').onclick = () => {
@@ -299,10 +309,10 @@ function wirePlay(m, q, back, ahead) {
 }
 
 /** A photograph on its own, because a phone held at arm's length in a meeting room is small. */
-function lightbox(c) {
+function lightbox(c, key) {
   const box = document.createElement('div');
   box.className = 'lightbox';
-  box.innerHTML = `<div><img src="${c.photo}" alt="${esc(c.name)}"><p>${esc(c.name)}</p></div>`;
+  box.innerHTML = `<div><img src="${photoFor(c, key)}" alt="${esc(c.name)}"><p>${esc(c.name)}</p></div>`;
   box.onclick = () => box.remove();
   document.body.appendChild(box);
 }

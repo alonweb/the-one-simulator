@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { questionsOf, isQuestionAnswered, predictionPatch, sliderOf } from './flow.js';
+import { questionsOf, isQuestionAnswered, predictionPatch, sliderOf, photoFor } from './flow.js';
 
 const CATS = [{ key: 'smile', label: 'the best smile?' }, { key: 'style', label: 'the best style?' }];
 
@@ -53,4 +53,15 @@ test('a category may carry the banner wording separately from its short name', (
   const qs = questionsOf([{ key: 'mama', label: 'Take to Mama', question: 'Take to Mama?' }]);
   assert.equal(qs[1].label, 'Take to Mama?');
   assert.equal(qs[1].short, 'Take to Mama');
+});
+
+test('each question shows the photograph taken for it, the general one for who is the one', () => {
+  const c = { photo: 'photos/c1-general.jpg', photos: { smile: 'photos/c1-smile.jpg' } };
+  assert.equal(photoFor(c, 'overall'), 'photos/c1-general.jpg');
+  assert.equal(photoFor(c, 'smile'), 'photos/c1-smile.jpg');
+});
+
+test('a category without its own photograph falls back to the general one', () => {
+  assert.equal(photoFor({ photo: 'photos/c1-general.jpg', photos: {} }, 'body'), 'photos/c1-general.jpg');
+  assert.equal(photoFor({ photo: 'photos/c1.jpg' }, 'body'), 'photos/c1.jpg');
 });
