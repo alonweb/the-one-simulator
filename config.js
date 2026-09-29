@@ -128,7 +128,7 @@ export const SURVEY_TEXT = {
     send: 'Send my answers', incomplete: 'Answer everything first',
     sending: 'Sending…', retrying: (n) => `Still sending… (try ${n})`,
     failed: 'Did not save. Tap to try again; it cannot double-count.',
-    thanks: 'Thank you', thanksBody: (name) => `Your survey is in${name ? ', ' + name : ''}. That is everything.`,
+    thanks: 'Thank you!', thanksBody: (name) => `Your survey is in${name ? ', ' + name : ''}.`,
     language: 'Language'
   },
   he: {
@@ -141,7 +141,7 @@ export const SURVEY_TEXT = {
     send: 'שליחת התשובות', incomplete: 'יש לענות על כל השאלות',
     sending: 'שולח…', retrying: (n) => `עדיין שולח… (ניסיון ${n})`,
     failed: 'התשובות לא נשמרו. אפשר ללחוץ שוב, הן לא ייספרו פעמיים.',
-    thanks: 'תודה', thanksBody: (name) => `השאלון שלך התקבל${name ? ', ' + name : ''}. זה הכול.`,
+    thanks: 'תודה רבה!', thanksBody: (name) => `השאלון שלך התקבל${name ? ', ' + name : ''}.`,
     language: 'שפה'
   }
 };
