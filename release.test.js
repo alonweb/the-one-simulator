@@ -51,13 +51,13 @@ test('a reset names the session so its cached releases are dropped at once', () 
 });
 
 test('the session read gives the round state and the released competitions', () => {
-  assert.deepEqual(parseSession({ ok: true, state: 'open', released: ['m1', 'm2'] }),
-    { state: 'open', released: ['m1', 'm2'] });
+  assert.deepEqual(parseSession({ ok: true, state: 'open', released: ['m1', 'm2'], epoch: '1759' }),
+    { state: 'open', released: ['m1', 'm2'], epoch: '1759' });
 });
 
 test('a server that predates releases reads as open with nothing released', () => {
-  assert.deepEqual(parseSession({ ok: true, state: 'closed' }), { state: 'closed', released: [] });
-  assert.deepEqual(parseSession(null), { state: 'open', released: [] });
+  assert.deepEqual(parseSession({ ok: true, state: 'closed' }), { state: 'closed', released: [], epoch: null });
+  assert.deepEqual(parseSession(null), { state: 'open', released: [], epoch: null });
 });
 
 test('each competition is locked under its own id, and the id leads back to the player', () => {

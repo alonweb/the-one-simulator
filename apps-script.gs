@@ -135,11 +135,19 @@ function readState_(code) { return readSession_(code).state; }
 const SESSION_CACHE_SECONDS = 4;
 function cacheKey_(code) { return 'session:' + String(code); }
 
+/**
+ * When the sheet was last reset. Every phone keeps the one it last saw; a different one means
+ * its answers were wiped, and it starts over by itself (2026-09-29: a phone left open since
+ * before a reset kept its old releases and played a matchup nobody had released).
+ */
+function epoch_() { return String(PropertiesService.getScriptProperties().getProperty('EPOCH') || '0'); }
+
 function cachedSession_(code) {
   const cache = CacheService.getScriptCache();
   const hit = cache.get(cacheKey_(code));
   if (hit) return JSON.parse(hit);
   const fresh = readSession_(code);
+  fresh.epoch = epoch_();
   cache.put(cacheKey_(code), JSON.stringify(fresh), SESSION_CACHE_SECONDS);
   return fresh;
 }
@@ -177,6 +185,7 @@ function doPost(e) {
       const refused = keyCheck_(body.key);
       if (refused) { note_('refused', body.sessionCode, 'reset: ' + refused, body.by); return json_({ ok: false, error: refused }); }
       wipe_(responses_()); wipe_(survey_()); wipe_(session_());
+      PropertiesService.getScriptProperties().setProperty('EPOCH', String(Date.now()));
       note_('reset', body.sessionCode, '', body.by);
       // the presenter sends its own label; any other code's cached state expires within seconds
       if (body.sessionCode) forget_(body.sessionCode);
@@ -222,8 +231,15 @@ function doPost(e) {
     if (body.kind === 'survey') return append_(survey_(), body);
     // a round the presenter has closed must not accept more submissions, or a late
     // lock joins the crowd result after the leaderboard has been announced
-    if (readState_(body.sessionCode) !== 'open') {
+    const session = readSession_(body.sessionCode);
+    if (session.state !== 'open') {
       return json_({ ok: false, error: 'the round is closed' });
+    }
+    // only a matchup the presenter has released takes a lock: a phone that kept an old list of
+    // releases through a reset must not put an answer in the sheet. Retrying cannot help.
+    const unreleased = Object.keys(body.answers || {}).filter(id => session.released.indexOf(id) < 0);
+    if (unreleased.length) {
+      return json_({ ok: false, error: 'not released: ' + unreleased.join(', '), retryable: false });
     }
     return append_(responses_(), body);
   } catch (err) {
@@ -239,7 +255,7 @@ function doGet(e) {
   if (what === 'state') {
     if (!String(code).trim()) return json_({ ok: false, error: 'a session code is needed' });
     const s = cachedSession_(code);
-    return json_({ ok: true, state: s.state, released: s.released });
+    return json_({ ok: true, state: s.state, released: s.released, epoch: s.epoch || epoch_() });
   }
   // Everything else is the statistics page: every player's answers and survey, the whole
   // sheet unless a code narrows it. The participant link is public, so only the

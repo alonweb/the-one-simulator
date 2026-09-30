@@ -25,11 +25,15 @@ export function loadServer({ key = 'k', now = () => Date.now() } = {}) {
     insertSheet: (n) => { const s = sheet(n); sheets.set(n, s); return s; }
   };
   const cache = new Map();
+  const props = {};
   const ctx = {
     JSON, Date, String, Math, Object, Array, Number,
     SpreadsheetApp: { getActiveSpreadsheet: () => ss },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
-    PropertiesService: { getScriptProperties: () => ({ getProperty: (p) => (p === 'PRESENTER_KEY' ? key : null) }) },
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: (p) => (p === 'PRESENTER_KEY' ? key : (p in props ? props[p] : null)),
+      setProperty: (p, v) => { props[p] = String(v); }
+    }) },
     CacheService: { getScriptCache: () => ({
       get: (k) => { const e = cache.get(k); return e && e.until > now() ? e.v : null; },
       put: (k, v, s) => { cache.set(k, { v, until: now() + s * 1000 }); },

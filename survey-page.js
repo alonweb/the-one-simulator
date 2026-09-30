@@ -1,5 +1,6 @@
-import { SURVEY, SURVEY_TEXT, SESSION_LABEL, ENDPOINT } from './config.js';
-import { submitSurvey, wake } from './store.js';
+import { SURVEY, SURVEY_TEXT, SESSION_LABEL } from './config.js';
+import { submitSurvey, fetchSession } from './store.js';
+import { wantsReset } from './draft.js';
 import { escapeHtml as esc } from './html.js';
 import { setSurveyAnswer, isSurveyComplete, localize, pickLanguage, LANGUAGES } from './survey.js';
 import { lastName } from './finish.js';
@@ -11,15 +12,21 @@ const el = document.getElementById('screen');
 const KEY = 'theone.survey.v2';
 const LANG_KEY = 'theone.lang';
 
+// ?reset=1 clears this device's survey so it can be answered again (a tester's phone). The
+// answer already sent stays in the sheet until the presenter resets it.
+if (wantsReset(location.search)) {
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  const l = new URLSearchParams(location.search).get('lang');
+  location.replace(location.pathname + (l ? '?lang=' + encodeURIComponent(l) : ''));
+}
+
 function load() {
   try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; }
 }
+const newId = () => 'srv-' + Math.random().toString(36).slice(2) + '-' + Date.now();
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
-const state = load() || {
-  id: 'srv-' + Math.random().toString(36).slice(2) + '-' + Date.now(),
-  name: lastName(), answers: {}, sent: false
-};
+const state = load() || { id: newId(), name: lastName(), answers: {}, sent: false };
 
 let savedLang = null;
 try { savedLang = localStorage.getItem(LANG_KEY); } catch (e) {}
@@ -142,6 +149,16 @@ function render() {
 }
 
 render();
-// wake the server while the player answers, so Send does not wait for it (an idle server took
-// up to 11 s to answer, 2026-09-29)
-if (!state.sent) wake(ENDPOINT, SESSION_LABEL);
+// One read on opening does two things. It wakes the server while the player answers, so Send
+// does not wait for it (an idle server took up to 11 s, 2026-09-29). And it says when the sheet
+// was last reset: a reset wipes the survey answers too, so a phone that sent before one is
+// asked again. A phone that saved no epoch yet (older than it) starts over only if it had sent,
+// so nobody's typing is ever thrown away.
+fetchSession(SESSION_LABEL).then((s) => {
+  if (s.epoch == null) return;
+  const resetSince = state.epoch != null ? state.epoch !== s.epoch : state.sent;
+  if (resetSince) Object.assign(state, { id: newId(), answers: {}, sent: false });
+  state.epoch = s.epoch;
+  save();
+  if (resetSince) { window.scrollTo(0, 0); render(); }
+}).catch(() => {});

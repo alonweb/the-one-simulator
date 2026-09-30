@@ -1,12 +1,20 @@
 // Submits synthetic participants so the whole path can be exercised before the day.
-//   ENDPOINT="https://script.google.com/.../exec" CODE=REHEARSAL node rehearse.mjs
+//   ENDPOINT="https://script.google.com/.../exec" KEY=<presenter key> CODE=REHEARSAL node rehearse.mjs
 // Requires the CURRENT apps-script.gs to be deployed as a NEW VERSION.
 import { MATCHUPS, CATEGORIES } from './config.js';
 
 const ENDPOINT = process.env.ENDPOINT;
 const CODE = process.env.CODE || 'REHEARSAL';
 const N = Number(process.env.N || 20);
-if (!ENDPOINT) { console.error('Set ENDPOINT.'); process.exit(1); }
+const KEY = process.env.KEY || '';
+if (!ENDPOINT || !KEY) { console.error('Set ENDPOINT and KEY (the presenter key).'); process.exit(1); }
+
+// the server takes a lock only for a released matchup (2026-09-29), so release them all under CODE
+for (const m of MATCHUPS) {
+  const r = await (await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ kind: 'release', sessionCode: CODE, matchupId: m.id, key: KEY, by: 'rehearse.mjs' }) })).json();
+  if (!r || r.ok !== true) { console.error('release refused:', r && r.error); process.exit(1); }
+}
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const started = Date.now();

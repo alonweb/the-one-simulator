@@ -107,3 +107,31 @@ test('fetchLog returns the log, and null from a server too old to keep one', asy
   t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ ok: false, error: 'wrong presenter key' }) }));
   await assert.rejects(fetchLog('k'), /wrong presenter key/);
 });
+
+// 2026-09-29: a stale phone's lock for an unreleased matchup must fail at once, not retry for
+// two minutes; and a failed state read must never look like "nothing released".
+test('a refusal the server marks as final is not retried', async (t) => {
+  const { submit } = await import('./store.js');
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => { calls++; return { ok: true, json: async () => ({ ok: false, error: 'not released: m1', retryable: false }) }; });
+  await assert.rejects(submit({ sessionCode: 'LIVE1', participant: 'a', answers: {}, submissionId: 's' }, { baseDelayMs: 1 }),
+    (err) => err.permanent === true && /not released/.test(err.message));
+  assert.equal(calls, 1);
+});
+
+test('an ordinary refusal is still retried', async (t) => {
+  const { submit } = await import('./store.js');
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => { calls++;
+    return { ok: true, json: async () => (calls < 3 ? { ok: false, error: 'the round is closed' } : { ok: true }) }; });
+  await submit({ sessionCode: 'LIVE1', participant: 'a', answers: {}, submissionId: 's' }, { baseDelayMs: 1 });
+  assert.equal(calls, 3);
+});
+
+test('fetchSession throws on a refused or broken reply instead of reading it as nothing released', async (t) => {
+  const { fetchSession } = await import('./store.js');
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ ok: false, error: 'busy', retryable: true }) }));
+  await assert.rejects(fetchSession('LIVE1'));
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => ({ ok: true, state: 'open', released: ['m1'], epoch: '5' }) }));
+  assert.deepEqual(await fetchSession('LIVE1'), { state: 'open', released: ['m1'], epoch: '5' });
+});

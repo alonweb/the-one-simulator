@@ -153,7 +153,8 @@ function closeProjector() {
 }
 document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && !projector.hidden) projector.hidden = true; });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !projector.hidden) closeProjector(); });
-document.getElementById('project').onclick = openProjector;
+// "Project the board" was taken off the page on Alon's word (2026-09-29); the full-screen
+// board below is kept but has no button.
 
 // "Start meeting". An idle server took up to 11 s to answer its first request (2026-09-29), and a
 // player saw a stuck Lock button. This wakes both games' servers, shows how fast each answered,

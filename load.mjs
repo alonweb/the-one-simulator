@@ -9,7 +9,7 @@
 //
 // Rows are stamped LOADTEST so they are easy to tell apart. Reset the sheet afterwards.
 import { MATCHUPS, CATEGORIES, SURVEY } from './config.js';
-import { submit, submitSurvey, fetchRows, fetchSurvey } from './store.js';
+import { submit, submitSurvey, fetchRows, fetchSurvey, release } from './store.js';
 
 const N = Number(process.env.N || 30);
 const KEY = process.env.KEY || '';
@@ -56,6 +56,11 @@ async function wave(label, fn) {
   return results;
 }
 
+// the server takes a lock only for a released matchup (2026-09-29), so release them all under CODE
+for (const m of MATCHUPS) {
+  const r = await release(CODE, m.id, KEY, 'load.mjs');
+  if (!r || r.ok !== true) { console.error('release refused:', r && r.error); process.exit(1); }
+}
 const locks = await wave('locks', (n, onAttempt) =>
   submit({ sessionCode: CODE, participant: `Load ${n}`, answers: answers(), submissionId: `load-${run}-${n}` }, { onAttempt }));
 if (PAUSE) { console.log(`waiting ${PAUSE}s before the surveys, as a room would`); await new Promise(r => setTimeout(r, PAUSE * 1000)); }
