@@ -12,13 +12,16 @@
   --r-card: 30px;
   --r-pill: 999px;
   --pad:    clamp(16px, 7.4vw, 30px);
+  /* the question screen's photographs, slider and button sit closer to the screen edge than the
+     wordmark does, as in the design sample (2026-09-30) */
+  --edge:   14px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
-/* A question is one screenful. The photographs take whatever height is left once the
-   wordmark, the question, the slider and the button have had theirs, so the whole
-   question fits on a phone without scrolling. */
+/* The photographs take whatever height is left once the wordmark, the question, the slider and
+   the button have had theirs, but never less than their own minimum (.shot): on a short screen
+   the page scrolls rather than the photographs shrinking. */
 #screen { display: flex; flex-direction: column; min-height: 100dvh; padding-bottom: 24px; }
 
 body {
@@ -75,22 +78,32 @@ p { margin: 10px 0; }
    photographs put it back */
 .stage { margin: 0 calc(var(--pad) * -1); display: flex; flex-direction: column;
           flex: 1 1 auto; min-height: 0; --seam: 20px; }
-/* The banner overlaps both photographs by the seam. Each photograph stops short of it, so no part
-   of the picture sits under the banner: a head at the top of a full-length photo was covered
-   (2026-09-29). Only the frame's grey edge goes under. */
-.stage > .shot:first-child .frame { padding-bottom: var(--seam); }
+/* The banner starts where the upper photograph ends and overlaps the lower one's frame by the seam.
+   The lower photograph stops short of it, so no part of the picture sits under the banner: a head
+   at the top of a full-length photo was covered (2026-09-29). Only the frame's grey edge goes under. */
 .stage > .shot:last-child .frame { padding-top: var(--seam); }
 
 /* The frame fills its shot by position, not by height: 100%. Safari does not resolve a percentage
    height inside a flexed box, so the frame grew to its full size and covered the slider below it
    (iPhones, 2026-09-29). The cap lives on the shot for the same reason. */
-.shot { position: relative; margin: 0 var(--pad); flex: 1 1 0; min-height: 168px; max-height: 330px; }
+/* A photograph is at least 0.83 of its width tall, the design sample's shape; on a short screen
+   the page scrolls instead of the photographs shrinking (Alon, 2026-09-30). */
+.shot { position: relative; margin: 0 var(--edge); flex: 1 1 0; max-height: 420px;
+        min-height: min(420px, calc((min(100vw, 520px) - 2 * var(--edge)) * .83)); }
 .frame {
   position: absolute; inset: 0;
   border-radius: var(--r-card); overflow: hidden; background: var(--grey-2); cursor: pointer;
 }
-.frame img { width: 100%; height: 100%; object-fit: contain; object-position: 50% 50%; display: block;
+/* The photograph covers the whole frame (the design, 2026-09-30); the zoom button shows it whole.
+   Almost all of any trim comes off the bottom: every face stays in, and the two tall style
+   photographs (Karin, Maya) lose their legs rather than their heads. */
+.frame img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 15%; display: block;
              -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* the slider and its button line up with the photographs */
+.stage ~ .predict, .stage ~ #next { margin-left: calc(var(--edge) - var(--pad)); margin-right: calc(var(--edge) - var(--pad)); }
+.stage ~ #next { width: auto; }
+/* the lower photograph's zoom button sits clear of the banner's overlap */
+.stage > .shot:last-child .zoom { top: calc(var(--seam) + 10px); }
 .shot.dim .frame::after {
   content: ''; position: absolute; inset: 0; background: rgba(255,255,255,.62);
   border-radius: var(--r-card); pointer-events: none;
@@ -121,7 +134,7 @@ p { margin: 10px 0; }
   flex: 0 0 auto; position: relative; z-index: 2; background: var(--yellow); color: var(--ink);
   text-align: center; font-weight: 800; font-style: italic;
   font-size: clamp(21px, 6.6vw, 28px); letter-spacing: -.02em;
-  padding: 12px var(--pad); margin: calc(var(--seam) * -1) 0; min-height: 56px;
+  padding: 12px var(--pad); margin: 0 0 calc(var(--seam) * -1); min-height: 56px;
   display: grid; place-items: center;
 }
 
