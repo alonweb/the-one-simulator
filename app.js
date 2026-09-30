@@ -6,7 +6,7 @@ import { markDone, clearDone, finishedAll } from './finish.js';
 import { emptyDraft, setAnswer, isComplete, saveDraft, loadDraft, clearDraft, wantsReset,
          shapeOf, draftMatches, clearMatchup } from './draft.js';
 import { questionsOf, nextCompetition, nextQuestion, prevQuestion, isQuestionAnswered,
-         predictionPatch, sliderOf, photoFor } from './flow.js';
+         predictionPatch, sliderOf, photoFor, resetSince } from './flow.js';
 
 const el = document.getElementById('screen');
 const QUESTIONS = questionsOf(CATEGORIES);
@@ -43,6 +43,8 @@ state.sessionCode = SESSION_LABEL;
 if (!Array.isArray(state.lockedIds)) state.lockedIds = state.locked ? MATCHUPS.map(m => m.id) : [];
 if (!Array.isArray(state.released)) state.released = [];
 if (!state.roundState) state.roundState = 'open';
+// a page closed while a lock was on its way must not stay marked as saving
+state.saving = false;
 
 const isLocked = (id) => state.lockedIds.includes(id);
 const allLocked = () => MATCHUPS.every(m => isLocked(m.id));
@@ -64,23 +66,59 @@ function advance() {
   return true;
 }
 
-// The waiting phone asks the server every few seconds which matchups are released.
-// The jitter keeps a room of phones from asking in the same instant.
+// The phone asks the server every few seconds which matchups are released: while it waits,
+// and also while it plays, reviews or has finished, because a list saved on the phone goes
+// stale the moment the presenter resets the sheet (2026-09-29: a phone open since before a
+// reset played a matchup nobody had released). The jitter keeps a room of phones from asking
+// in the same instant.
+const WATCHED = ['wait', 'play', 'review', 'done'];
 let pollTimer = null;
+let pollPending = false;
 let polling = false;
-function pollSoon(ms) { clearTimeout(pollTimer); pollTimer = setTimeout(poll, ms); }
+function pollSoon(ms) {
+  clearTimeout(pollTimer); pollPending = true;
+  pollTimer = setTimeout(() => { pollPending = false; poll(); }, ms);
+}
+function keepPolling(ms) { if (!pollPending && !polling) pollSoon(ms); }
 async function poll() {
-  if (state.screen !== 'wait' || polling) return;
+  if (!WATCHED.includes(state.screen) || polling) return;
   polling = true;
-  try {
-    const s = await fetchSession(SESSION_LABEL);
-    state.released = s.released; state.roundState = s.state; state.offline = false;
-    saveDraft(state);
-  } catch (e) { state.offline = true; }
+  let s = null;
+  try { s = await fetchSession(SESSION_LABEL); state.offline = false; }
+  catch (e) { state.offline = true; }
   finally { polling = false; }
-  if (state.screen !== 'wait' || advance()) return;
-  renderWait();
-  pollSoon(4000 + Math.random() * 2000);
+  if (!WATCHED.includes(state.screen)) return;
+  if (s && resetSince(state, s)) return startOver(s);
+  if (s) {
+    state.released = s.released; state.roundState = s.state;
+    if (s.epoch != null) state.epoch = s.epoch;
+    saveDraft(state);
+  }
+  if (state.screen === 'done') { pollSoon(20000 + Math.random() * 10000); return; }
+  if (state.screen === 'wait') {
+    if (advance()) return;
+    renderWait();
+    pollSoon(4000 + Math.random() * 2000);
+    return;
+  }
+  // playing or reviewing: a matchup no longer open to lock sends the phone back to waiting,
+  // with its answers kept on the phone. Never while a lock is on its way.
+  const m = MATCHUPS[state.index];
+  if (!state.saving && (!m || state.roundState !== 'open' || !state.released.includes(m.id))) { go('wait'); return; }
+  pollSoon(6000 + Math.random() * 3000);
+}
+
+/** The presenter reset the sheet, so this phone's answers are gone from it: it starts over as a
+    new player under the same name. */
+function startOver(s) {
+  const name = state.participant;
+  Object.assign(state, freshState(), {
+    participant: name, screen: name ? 'wait' : 'join',
+    released: s.released, roundState: s.state, epoch: s.epoch
+  });
+  clearDone(DONE_KEY);
+  saveDraft(state);
+  render(); window.scrollTo(0, 0);
 }
 
 /** The chrome every screen carries: the wordmark, and the menu behind the three lines. */
@@ -138,12 +176,12 @@ function render() {
 }
 
 function route() {
-  if (state.screen !== 'wait') clearTimeout(pollTimer);
+  if (!WATCHED.includes(state.screen)) { clearTimeout(pollTimer); pollPending = false; }
   if (state.screen === 'join') return renderJoin();
   if (state.screen === 'wait') { renderWait(); if (!polling) pollSoon(0); return; }
-  if (state.screen === 'play') return renderPlay();
-  if (state.screen === 'review') return renderReview();
-  if (state.screen === 'done') return renderDone();
+  if (state.screen === 'play') { keepPolling(6000 + Math.random() * 3000); return renderPlay(); }
+  if (state.screen === 'review') { keepPolling(6000 + Math.random() * 3000); return renderReview(); }
+  if (state.screen === 'done') { keepPolling(20000 + Math.random() * 10000); return renderDone(); }
   return renderJoin();
 }
 
@@ -402,14 +440,19 @@ function renderReview() {
     const note = document.getElementById('lockNote');
     btn.disabled = true; note.hidden = false;
     busy(btn, 'Saving…');
+    state.saving = true;
     try {
       // each matchup is its own row, under the player's id and the matchup's
       await submit({ sessionCode: state.sessionCode, participant: state.participant,
                      answers: { [m.id]: state.draft[m.id] }, submissionId: lockIdOf(state.submissionId, m.id) },
                     { onAttempt: (n) => busy(btn, n === 1 ? 'Saving…' : `Still saving… (try ${n})`) });
+      state.saving = false;
       if (!isLocked(m.id)) state.lockedIds = [...state.lockedIds, m.id];
       if (!advance()) go('wait');
     } catch (err) {
+      state.saving = false;
+      // the server refused it for good: this matchup is not released (a reset since). Back to waiting.
+      if (err.permanent) { go('wait'); return; }
       document.getElementById('lockErr').textContent =
         'Did not save. Tap to try again; it cannot double-count.';
       btn.classList.remove('busy'); note.hidden = true;
@@ -437,4 +480,7 @@ function renderDone() {
   document.getElementById('again').onclick = () => { clearDraft(); clearDone(DONE_KEY); location.replace(location.pathname); };
 }
 
+// a phone reopened mid-game or after finishing checks at once whether the sheet was reset,
+// rather than trusting what it saved
+if (['play', 'review', 'done'].includes(state.screen)) pollSoon(0);
 render();

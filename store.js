@@ -88,11 +88,16 @@ async function send(body, opts = {}) {
     onAttempt(n);
     try {
       const r = await post(body);
-      if (!r || r.ok !== true) throw new Error((r && r.error) || 'rejected by the server');
+      if (!r || r.ok !== true) {
+        const refused = new Error((r && r.error) || 'rejected by the server');
+        // the server says retrying cannot help (a matchup that is not released): stop now
+        if (r && r.retryable === false) refused.permanent = true;
+        throw refused;
+      }
       return r;
     } catch (err) {
       lastError = err;
-      if (n === attempts) break;
+      if (err.permanent || n === attempts) break;
       const wait = Math.min(base * Math.pow(1.6, n - 1), 15000) + Math.random() * 500;
       await new Promise(r => setTimeout(r, wait));
     }
@@ -147,14 +152,20 @@ export async function release(sessionCode, matchupId, key, by) {
 export function parseSession(data) {
   return {
     state: (data && data.state) || 'open',
-    released: data && Array.isArray(data.released) ? data.released.map(String) : []
+    released: data && Array.isArray(data.released) ? data.released.map(String) : [],
+    // when the sheet was last reset; null from a server that predates it
+    epoch: data && data.epoch != null ? String(data.epoch) : null
   };
 }
 
 /** Public on purpose: every phone reads it while it waits. It carries no answers. */
 export async function fetchSession(sessionCode) {
   const res = await fetch(`${ENDPOINT}?what=state&code=${encodeURIComponent(normalizeCode(sessionCode))}`);
-  return parseSession(await res.json());
+  const data = await res.json();
+  // a refused or broken reply must never read as "nothing released": a phone would take that
+  // for a reset and start over
+  if (!data || data.ok !== true) throw new Error((data && data.error) || 'no state from the server');
+  return parseSession(data);
 }
 
 /**

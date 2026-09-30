@@ -121,15 +121,19 @@ data is a focus group's opinions about photographs, not anything that needs to.
    newest first, with the time and the presenter device that did it (for example `Mac·k3f9`; the
    page names its own device). It lives in the sheet's `log` tab, which Reset does not clear. It
    was added after a round was found closed on 2026-09-29 with nothing to say when or by whom.
+   **After a Reset, every phone starts over by itself**, under the same name: the server keeps a
+   reset epoch, and a phone that sees a new one drops its old answers and releases (2026-09-29:
+   a phone open since before a reset played a matchup nobody had released). Phones check while
+   they wait, play, review and after finishing. The server also refuses a lock for a matchup
+   that is not released. `?reset=1` on a game or on `survey.html` still clears one phone by hand.
 2. Participants open the participant link and enter their name. Their phone waits until you
    release a matchup.
 3. **Release** a matchup in the Competitions strip. Every waiting phone opens it within about
    five seconds. Release one, or several at once; players answer released matchups in matchup
    order and lock each on its own. A release cannot be taken back (only Reset clears it).
 4. Watch the lock count next to each matchup. It counts locks only: the page cannot tell you
-   who has joined and is still playing, so count the room. When the room is in, press
-   **Project the board**: the board alone, large, with no answers or survey on it. Esc or
-   Close returns to the page. Then release the next matchup.
+   who has joined and is still playing, so count the room. When the room is in, release the next
+   matchup. ("Project the board" was removed on Alon's word, 2026-09-29.)
 5. After the fifth lock a player sees a thank-you screen. Phones never show results. When
    everyone has locked the fifth: **Close the round**. The page refreshes every 10 seconds.
 6. After the devices game, players answer the survey on its own page (see The survey). The

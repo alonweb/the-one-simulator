@@ -20,6 +20,17 @@ export function nextCompetition(matchups, released, locked) {
   return matchups.findIndex(m => open.has(m.id) && !done.has(m.id));
 }
 
+/**
+ * True when the presenter has reset the sheet since this phone last looked, so its answers are
+ * gone from the sheet and it must start over. The server's epoch says so; a phone that saved
+ * none (older than the epoch) falls back on releases: only a reset ever takes one away.
+ */
+export function resetSince(prev, now) {
+  if (prev.epoch != null && now.epoch != null) return String(prev.epoch) !== String(now.epoch);
+  const was = prev.released || [];
+  return was.some(id => !(now.released || []).includes(id));
+}
+
 /** Questions step within one competition; null past its last question, or before its first. */
 export function nextQuestion(step, nQuestions) { return step + 1 < nQuestions ? step + 1 : null; }
 export function prevQuestion(step) { return step > 0 ? step - 1 : null; }
