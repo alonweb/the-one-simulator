@@ -101,8 +101,9 @@ test('the board has a column per released competition and a dash where a player 
   ]);
   const crowd = { m1: crowdResult(rows, 'm1', []), m2: crowdResult(rows, 'm2', []) };
   const t = boardTable(leaderboard(rows, crowd), ['m1', 'm2']);
+  // Ana predicted and voted the room's pick in both (2 + 1 each); Bo only voted it in m1 (+1)
   assert.deepEqual(t.map(r => [r.rank, r.participant, r.cells, r.total]),
-    [[1, 'Ana', [2, 2], 4], [2, 'Bo', [0, null], 0]]);
+    [[1, 'Ana', [3, 3], 6], [2, 'Bo', [1, null], 1]]);
 });
 
 test('an unreleased competition scores nothing, even if rows for it exist', () => {
@@ -111,6 +112,6 @@ test('an unreleased competition scores nothing, even if rows for it exist', () =
   ]);
   const crowd = { m1: crowdResult(rows, 'm1', []) };
   const t = boardTable(leaderboard(rows, crowd), ['m1']);
-  assert.deepEqual(t[0].cells, [2]);
-  assert.equal(t[0].total, 2);
+  assert.deepEqual(t[0].cells, [3]);
+  assert.equal(t[0].total, 3);
 });

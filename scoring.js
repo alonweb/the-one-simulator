@@ -1,6 +1,15 @@
 export const BANDS = [[50, 59], [60, 69], [70, 79], [80, 89], [90, 100]];
 export const FLOOR = 51;
-export const MAX_PER_MATCHUP = 2 + 4 * (1 + 5);
+// +1 on any question where the girl the player voted for is the one the room picked there
+// (Alon, 2026-09-30, during the meeting). A tied question has no pick, so it gives no vote point.
+export const VOTE_POINT = 1;
+export const MAX_PER_MATCHUP = 2 + VOTE_POINT + 4 * (1 + 5 + VOTE_POINT);
+
+/** The contestant the room gave more than half of a question's votes, or null on a tie. */
+export function roomPick(shares) {
+  const top = Object.entries(shares || {}).sort((a, b) => b[1] - a[1])[0];
+  return top && top[1] > 50 ? top[0] : null;
+}
 
 export function bandOf(share) {
   if (share < 50) return null;
@@ -25,15 +34,25 @@ export function scoreOverall(predicted, crowdWinner) {
   return predicted === crowdWinner ? 2 : 0;
 }
 
+/**
+ * `overall` and each category's `points` include the vote point, so a question's points still add up
+ * to the matchup total; `overallPrediction`, `overallVote` and a category's `votePoint` keep the parts.
+ */
 export function scoreMatchup(answer, crowd) {
   const a = answer || {};
-  const overall = scoreOverall(a.overall && a.overall.predicted, crowd.overallWinner);
+  const o = a.overall || {};
+  const overallPrediction = scoreOverall(o.predicted, crowd.overallWinner);
+  const overallVote = o.vote && crowd.overallWinner && o.vote === crowd.overallWinner ? VOTE_POINT : 0;
+  const overall = overallPrediction + overallVote;
   const categories = {};
   let total = overall;
   for (const key of Object.keys(a.categories || {})) {
-    const r = scoreCategory(a.categories[key], crowd.categories[key] || {});
-    categories[key] = r;
-    total += r.points;
+    const shares = crowd.categories[key] || {};
+    const r = scoreCategory(a.categories[key], shares);
+    const pick = roomPick(shares);
+    const votePoint = a.categories[key].vote && pick && a.categories[key].vote === pick ? VOTE_POINT : 0;
+    categories[key] = { ...r, votePoint, points: r.points + votePoint };
+    total += r.points + votePoint;
   }
-  return { overall, categories, total };
+  return { overall, overallPrediction, overallVote, categories, total };
 }

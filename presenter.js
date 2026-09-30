@@ -279,7 +279,8 @@ async function refresh() {
       <p class="note">Ranked as above. "Player said" is who they predicted the room would pick and the share they gave; their own vote is in brackets.
         The rules: right overall winner +2. Each category: the room's share for that contestant falls in one of five bands
         (50–59, 60–69, 70–79, 80–89, 90–100); same band as the player's number +1, and the exact number +5 on top.
-        A share below 51, a tied room, or a contestant nobody picked scores 0. Most a matchup can give is 26.</p>
+        A share below 51, a tied room, or a contestant nobody picked scores 0. On every question, +1 more when the
+        girl the player voted for is the one the room picked there. Most a matchup can give is 31.</p>
       ${playerCards(stats, crowd)}
 
       ${surveySection()}
