@@ -60,6 +60,31 @@ test('a wrong overall winner does not zero the categories', () => {
   assert.equal(r.total, 6);
 });
 
-test('the ceiling is 26 on one matchup', () => {
-  assert.equal(MAX_PER_MATCHUP, 26);
+test('the ceiling is 31 on one matchup', () => {
+  assert.equal(MAX_PER_MATCHUP, 31);
+});
+
+test('voting for the girl the room picked gives +1 on that question, prediction or not', () => {
+  const answer = {
+    overall: { vote: 'A', predicted: 'B' },
+    categories: { smile: { vote: 'B', contestant: 'A', share: 74 }, style: { vote: 'A', contestant: 'A', share: 65 } }
+  };
+  const crowd = { overallWinner: 'A', categories: { smile: { A: 40, B: 60 }, style: { A: 65, B: 35 } } };
+  const r = scoreMatchup(answer, crowd);
+  assert.equal(r.overallPrediction, 0);
+  assert.equal(r.overallVote, 1);
+  assert.equal(r.overall, 1);
+  assert.equal(r.categories.smile.votePoint, 1);
+  assert.equal(r.categories.smile.points, 1);
+  assert.equal(r.categories.style.votePoint, 1);
+  assert.equal(r.categories.style.points, 7);
+  assert.equal(r.total, 9);
+});
+
+test('a tied question gives no vote point', () => {
+  const answer = { overall: { vote: 'A', predicted: 'A' }, categories: { smile: { vote: 'A', contestant: 'A', share: 60 } } };
+  const r = scoreMatchup(answer, { overallWinner: null, categories: { smile: { A: 50, B: 50 } } });
+  assert.equal(r.overall, 0);
+  assert.equal(r.categories.smile.points, 0);
+  assert.equal(r.total, 0);
 });
